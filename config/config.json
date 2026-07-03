@@ -65,7 +65,7 @@
                                     "retry_attempts":  3,
                                     "timeout_seconds":  30,
                                     "recipients":  [
-                                                       "your-email@example.com"
+                                                       "michel@brosche-swiss.ch"
                                                    ],
                                     "token_cache_path":  "data/.token_cache.json",
                                     "provider":  "graph"
