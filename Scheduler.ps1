@@ -126,7 +126,7 @@ function Invoke-MonitoringCycle {
     Write-Log -Level INFO -Message "Monitoring cycle starting" `
         -Context @{ monitors = $config.monitors.Count }
 
-    $allNewCourses = @()
+    $cycleAlerts = @{ new = @(); reduced = @(); sold_out = @() }
 
     foreach ($monitorConfig in $config.monitors) {
         if (-not $monitorConfig.enabled) {
@@ -153,18 +153,30 @@ function Invoke-MonitoringCycle {
             Write-Log -Level INFO -Message "Courses fetched" `
                 -Context @{ monitor = $monitorConfig.id; count = $currentCourses.Count }
 
-            # Identify new/changed courses (compare with previous state)
-            $newCourses = Get-NewCourses -CurrentCourses $currentCourses -PreviousCourses $state.last_notified
+            # Merge current courses with state (detects changes)
+            $mergeResult = Update-StateWithCourses -State $state -CurrentCourses $currentCourses
+            $state = $mergeResult.state
+            $alerts = $mergeResult.alerts
 
-            if ($newCourses.Count -gt 0) {
-                Write-Log -Level WARN -Message "New or changed courses detected" `
-                    -Context @{ monitor = $monitorConfig.id; count = $newCourses.Count; total_tracked = $currentCourses.Count }
-
-                $allNewCourses += $newCourses
+            # Log alerts by type
+            if ($alerts.new.Count -gt 0) {
+                Write-Log -Level INFO -Message "New courses detected" `
+                    -Context @{ monitor = $monitorConfig.id; count = $alerts.new.Count }
+                $cycleAlerts.new += $alerts.new
             }
 
-            # Update state with ALL current courses (for next comparison)
-            $state = Update-StateWithCourses -State $state -Courses $currentCourses
+            if ($alerts.reduced.Count -gt 0) {
+                Write-Log -Level INFO -Message "Availability reduced" `
+                    -Context @{ monitor = $monitorConfig.id; count = $alerts.reduced.Count }
+                $cycleAlerts.reduced += $alerts.reduced
+            }
+
+            if ($alerts.sold_out.Count -gt 0) {
+                $disappearedCount = @($alerts.sold_out | Where-Object { $_.disappeared }).Count
+                Write-Log -Level INFO -Message "Courses sold out or disappeared" `
+                    -Context @{ monitor = $monitorConfig.id; sold_out = $alerts.sold_out.Count; disappeared = $disappearedCount }
+                $cycleAlerts.sold_out += $alerts.sold_out
+            }
         }
         catch {
             $err = $_
@@ -173,19 +185,48 @@ function Invoke-MonitoringCycle {
         }
     }
 
-    # Notify about new courses (stub for v0.1)
-    if ($allNewCourses.Count -gt 0) {
-        Write-Log -Level INFO -Message "Notification step (v0.1 stubs)" `
-            -Context @{ courses = $allNewCourses.Count }
+    # Notify about alerts (all types)
+    $totalAlerts = $cycleAlerts.new.Count + $cycleAlerts.reduced.Count + $cycleAlerts.sold_out.Count
 
-        # v0.1: Call notifier stubs (they just log)
-        Send-EmailNotification -Courses $allNewCourses -Config $config.notifiers.email
-        Send-DiscordNotification -Courses $allNewCourses -Config $config.notifiers.discord
-        Send-ToastNotification -Courses $allNewCourses -Config $config.notifiers.windows_toast
+    if ($totalAlerts -gt 0) {
+        Write-Log -Level INFO -Message "Sending notifications" `
+            -Context @{ new = $cycleAlerts.new.Count; reduced = $cycleAlerts.reduced.Count; sold_out = $cycleAlerts.sold_out.Count }
+
+        # v0.1: Call notifier stubs with alert types
+        if ($cycleAlerts.new.Count -gt 0) {
+            Send-EmailNotification -Alerts $cycleAlerts.new -Config $config.notifiers.email
+        }
+        if ($cycleAlerts.reduced.Count -gt 0) {
+            Send-EmailNotification -Alerts $cycleAlerts.reduced -Config $config.notifiers.email
+        }
+        if ($cycleAlerts.sold_out.Count -gt 0) {
+            Send-EmailNotification -Alerts $cycleAlerts.sold_out -Config $config.notifiers.email
+        }
+
+        # Same for Discord and Toast
+        if ($cycleAlerts.new.Count -gt 0) {
+            Send-DiscordNotification -Alerts $cycleAlerts.new -Config $config.notifiers.discord
+        }
+        if ($cycleAlerts.reduced.Count -gt 0) {
+            Send-DiscordNotification -Alerts $cycleAlerts.reduced -Config $config.notifiers.discord
+        }
+        if ($cycleAlerts.sold_out.Count -gt 0) {
+            Send-DiscordNotification -Alerts $cycleAlerts.sold_out -Config $config.notifiers.discord
+        }
+
+        if ($cycleAlerts.new.Count -gt 0) {
+            Send-ToastNotification -Alerts $cycleAlerts.new -Config $config.notifiers.windows_toast
+        }
+        if ($cycleAlerts.reduced.Count -gt 0) {
+            Send-ToastNotification -Alerts $cycleAlerts.reduced -Config $config.notifiers.windows_toast
+        }
+        if ($cycleAlerts.sold_out.Count -gt 0) {
+            Send-ToastNotification -Alerts $cycleAlerts.sold_out -Config $config.notifiers.windows_toast
+        }
     }
     else {
-        Write-Log -Level INFO -Message "No new courses to notify" `
-            -Context @{ total_courses = $state.last_notified.Count }
+        Write-Log -Level INFO -Message "No alerts to notify" `
+            -Context @{ total_tracked = $state.last_notified.Count }
     }
 
     # Save updated state
@@ -200,15 +241,19 @@ function Invoke-MonitoringCycle {
 
     Write-Log -Level INFO -Message "Monitoring cycle completed" `
         -Context @{
-            total_current = $state.last_notified.Count
-            new_courses = $allNewCourses.Count
+            total_tracked = $state.last_notified.Count
+            new = $cycleAlerts.new.Count
+            reduced = $cycleAlerts.reduced.Count
+            sold_out = $cycleAlerts.sold_out.Count
             duration_ms = $cycleDuration
         }
 
     return @{
         timestamp = $cycleStart.ToString('o')
-        new_courses = $allNewCourses.Count
-        total_courses = $state.last_notified.Count
+        new = $cycleAlerts.new.Count
+        reduced = $cycleAlerts.reduced.Count
+        sold_out = $cycleAlerts.sold_out.Count
+        total_tracked = $state.last_notified.Count
         duration_ms = $cycleDuration
     }
 }

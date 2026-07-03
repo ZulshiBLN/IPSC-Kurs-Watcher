@@ -1,8 +1,27 @@
 ﻿#Requires -Version 5.1
 
-function Send-EmailNotification { param([object[]]$Courses, [object]$Config)
+function Send-EmailNotification {
+    <#
+    .SYNOPSIS
+    Send email notifications for course alerts (v0.1 stub).
+
+    .PARAMETER Alerts
+    Array of alert objects with alert_reason (NEW_COURSE, AVAILABILITY_REDUCED, SOLD_OUT)
+
+    .PARAMETER Config
+    Email configuration from config.json
+    #>
+    param([object[]]$Alerts, [object]$Config)
+
     if (-not $Config.enabled) { return }
-    if (-not $Courses -or $Courses.Count -eq 0) { return }
-    Write-Log -Level INFO -Message "Email notification stub" -Context @{ courses = $Courses.Count; status = 'STUB_v0.1_not_sent' }
+    if (-not $Alerts -or $Alerts.Count -eq 0) { return }
+
+    # v0.1: Stub - log alerts by type
+    $byReason = $Alerts | Group-Object -Property alert_reason
+
+    foreach ($group in $byReason) {
+        Write-Log -Level INFO -Message "Email notification ($($group.Name) stub)" `
+            -Context @{ count = $group.Count; status = 'STUB_v0.1_not_sent' }
+    }
 }
 

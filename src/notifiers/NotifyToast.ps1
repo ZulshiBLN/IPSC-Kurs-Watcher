@@ -1,8 +1,27 @@
 ﻿#Requires -Version 5.1
 
-function Send-ToastNotification { param([object[]]$Courses, [object]$Config)
+function Send-ToastNotification {
+    <#
+    .SYNOPSIS
+    Send Windows Toast notifications for course alerts (v0.1 stub).
+
+    .PARAMETER Alerts
+    Array of alert objects with alert_reason (NEW_COURSE, AVAILABILITY_REDUCED, SOLD_OUT)
+
+    .PARAMETER Config
+    Toast notification configuration from config.json
+    #>
+    param([object[]]$Alerts, [object]$Config)
+
     if (-not $Config.enabled) { return }
-    if (-not $Courses -or $Courses.Count -eq 0) { return }
-    Write-Log -Level INFO -Message "Toast notification stub" -Context @{ courses = $Courses.Count; status = 'STUB_v0.1_not_shown' }
+    if (-not $Alerts -or $Alerts.Count -eq 0) { return }
+
+    # v0.1: Stub - log alerts by type
+    $byReason = $Alerts | Group-Object -Property alert_reason
+
+    foreach ($group in $byReason) {
+        Write-Log -Level INFO -Message "Toast notification ($($group.Name) stub)" `
+            -Context @{ count = $group.Count; status = 'STUB_v0.1_not_shown' }
+    }
 }
 

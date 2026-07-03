@@ -37,6 +37,7 @@ function Save-State { param([hashtable]$State, [string]$StateFile = 'data/state.
                 $json += '      "url": ' + ($course.url | ConvertTo-Json) + ','
                 $json += '      "monitor_id": ' + ($course.monitor_id | ConvertTo-Json) + ','
                 $json += '      "notified_at": ' + ($course.notified_at | ConvertTo-Json)
+                if ($course.last_updated) { $json += ',' + "`n" + '      "last_updated": ' + ($course.last_updated | ConvertTo-Json) }
                 if ($i -lt $State.last_notified.Count - 1) { $json += '    },' }
                 else { $json += '    }' }
             }
@@ -49,27 +50,151 @@ function Save-State { param([hashtable]$State, [string]$StateFile = 'data/state.
     catch { Write-Log -Level ERROR -Message "Failed to save state" -Context @{ file = $StateFile } -Exception $_ }
 }
 
-function Get-NewCourses { param([object[]]$CurrentCourses, [object[]]$PreviousCourses)
-    $newCourses = @()
+function Merge-CourseState {
+    <#
+    .SYNOPSIS
+    Merges current courses with tracked state, detecting changes (NEW, REDUCED, SOLD_OUT).
+
+    .DESCRIPTION
+    Compares current website courses with previously tracked courses, detecting:
+    - NEW: Courses not previously seen
+    - REDUCED: Courses with decreased availability (>0)
+    - SOLD_OUT: Courses with availability=0 or disappeared from website
+    Returns alerts and merged state for persistence.
+
+    .PARAMETER CurrentCourses
+    Courses fetched from website (this run)
+
+    .PARAMETER TrackedCourses
+    Courses from last state.json (previous run)
+
+    .OUTPUTS
+    Hashtable with 'alerts' (new, reduced, sold_out) and 'updated_state' (merged courses for state.json)
+    #>
+    param([object[]]$CurrentCourses, [object[]]$TrackedCourses)
+
+    $alerts = @{ new = @(); reduced = @(); sold_out = @() }
+    $mergedState = @()
+
+    # 1. Process all CURRENT courses (what website shows)
     foreach ($current in $CurrentCourses) {
         $courseId = "$($current.name)|$($current.date)|$($current.time)"
-        $previous = $PreviousCourses | Where-Object { $_.id -eq $courseId }
-        if (-not $previous) { $current | Add-Member -NotePropertyName 'alert_reason' -NotePropertyValue 'NEW_COURSE' -Force; $newCourses += $current }
-        elseif ($current.availability -lt $previous.availability) { $current | Add-Member -NotePropertyName 'alert_reason' -NotePropertyValue 'AVAILABILITY_REDUCED' -Force; $newCourses += $current }
-    }
-    return $newCourses
-}
+        $tracked = $TrackedCourses | Where-Object { $_.id -eq $courseId }
 
-function Update-StateWithCourses { param([hashtable]$State, [object[]]$Courses)
-    $notifiedCourses = @()
-    foreach ($course in $Courses) {
-        $notifiedCourses += @{
-            id = "$($course.name)|$($course.date)|$($course.time)"
-            name = $course.name; date = $course.date; time = $course.time
-            availability = $course.availability; price = $course.price; url = $course.url
-            monitor_id = $course.monitor_id; notified_at = [datetime]::UtcNow.ToString('o')
+        if ($tracked) {
+            # Course was previously tracked
+            if ($current.availability -eq 0) {
+                # Availability dropped to 0 = SOLD OUT
+                $current | Add-Member -NotePropertyName 'alert_reason' -NotePropertyValue 'SOLD_OUT' -Force
+                $alerts.sold_out += $current
+                # Do NOT add to mergedState (delete it)
+            }
+            elseif ($current.availability -lt $tracked.availability) {
+                # Availability decreased (but still > 0)
+                $current | Add-Member -NotePropertyName 'alert_reason' -NotePropertyValue 'AVAILABILITY_REDUCED' -Force
+                $alerts.reduced += $current
+                # UPDATE in mergedState with new availability
+                $mergedState += @{
+                    id = $courseId
+                    name = $current.name
+                    date = $current.date
+                    time = $current.time
+                    availability = $current.availability
+                    price = $current.price
+                    url = $current.url
+                    monitor_id = $current.monitor_id
+                    notified_at = $tracked.notified_at
+                    last_updated = [datetime]::UtcNow.ToString('o')
+                }
+            }
+            else {
+                # Availability unchanged (or increased - shouldn't happen per requirements)
+                # UNCHANGED = do not alert, keep in state as-is
+                $mergedState += $tracked
+            }
+        }
+        else {
+            # Course is NEW
+            $current | Add-Member -NotePropertyName 'alert_reason' -NotePropertyValue 'NEW_COURSE' -Force
+            $alerts.new += $current
+            # ADD to mergedState
+            $mergedState += @{
+                id = $courseId
+                name = $current.name
+                date = $current.date
+                time = $current.time
+                availability = $current.availability
+                price = $current.price
+                url = $current.url
+                monitor_id = $current.monitor_id
+                notified_at = [datetime]::UtcNow.ToString('o')
+            }
         }
     }
-    $State.last_notified = $notifiedCourses
-    return $State
+
+    # 2. Process all TRACKED courses not in CURRENT (disappeared)
+    foreach ($tracked in $TrackedCourses) {
+        $courseId = $tracked.id
+        $current = $CurrentCourses | Where-Object { "$($_.name)|$($_.date)|$($_.time)" -eq $courseId }
+
+        if (-not $current) {
+            # Course was tracked but is NO LONGER on website
+            $tracked | Add-Member -NotePropertyName 'alert_reason' -NotePropertyValue 'SOLD_OUT' -Force
+            $tracked | Add-Member -NotePropertyName 'disappeared' -NotePropertyValue $true -Force
+            $alerts.sold_out += $tracked
+            # Do NOT add to mergedState (delete it)
+        }
+    }
+
+    return @{
+        alerts = $alerts
+        updated_state = $mergedState
+    }
+}
+
+function Update-StateWithCourses {
+    <#
+    .SYNOPSIS
+    Merges current courses into state, returns both updated state and alerts.
+
+    .DESCRIPTION
+    Uses Merge-CourseState to intelligently update state.json, tracking only changes.
+    Returns hashtable with 'state' (updated) and 'alerts' (for notifications).
+
+    .PARAMETER State
+    Current state hashtable from state.json
+
+    .PARAMETER CurrentCourses
+    Courses fetched this run
+
+    .OUTPUTS
+    Hashtable with 'state' and 'alerts'
+    #>
+    param([hashtable]$State, [object[]]$CurrentCourses)
+
+    $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $State.last_notified
+
+    $State.last_notified = $mergeResult.updated_state
+
+    return @{
+        state = $State
+        alerts = $mergeResult.alerts
+    }
+}
+
+function Get-NewCourses {
+    <#
+    .SYNOPSIS
+    DEPRECATED: Use Merge-CourseState instead.
+
+    .DESCRIPTION
+    Legacy function kept for backwards compatibility. New code should use Merge-CourseState
+    which properly handles SOLD_OUT courses and state merging.
+    #>
+    param([object[]]$CurrentCourses, [object[]]$PreviousCourses)
+
+    Write-Log -Level WARN -Message "Get-NewCourses is deprecated, use Merge-CourseState instead"
+
+    $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $PreviousCourses
+    return $mergeResult.alerts.new + $mergeResult.alerts.reduced
 }
