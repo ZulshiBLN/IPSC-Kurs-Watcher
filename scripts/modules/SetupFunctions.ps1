@@ -226,7 +226,9 @@ function Invoke-SetScheduledTask {
                     return $false
                 }
                 $timespan = New-TimeSpan -Minutes $minutes
-                $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval $timespan -RepetitionDuration ([timespan]::MaxValue)
+                # RepetitionDuration set to 1 year (365 days) for practical unlimited repetition
+                $duration = New-TimeSpan -Days 365
+                $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval $timespan -RepetitionDuration $duration
                 Write-Host "[OK] Repeating trigger set to: Every $minutes minutes" -ForegroundColor Green
             }
             "3" {
