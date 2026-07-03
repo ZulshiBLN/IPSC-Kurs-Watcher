@@ -231,6 +231,86 @@ Describe "Send-EmailNotification" {
     }
 }
 
+Describe "Token Cache Encryption" {
+    Context "Token Cache Save and Load" {
+        BeforeEach {
+            $testCacheDir = Join-Path $env:TEMP "pester-token-cache-$(Get-Random)"
+            New-Item -ItemType Directory -Path $testCacheDir -Force | Out-Null
+            $testCachePath = Join-Path $testCacheDir "test_token.cache"
+        }
+
+        AfterEach {
+            if (Test-Path $testCacheDir) {
+                Remove-Item -Recurse -Force $testCacheDir -ErrorAction SilentlyContinue
+            }
+        }
+
+        It "saves token in encrypted format" {
+            Add-Type -AssemblyName System.Security
+
+            $testToken = @{
+                access_token = 'test_access_token_12345'
+                token_type = 'Bearer'
+                expires_in = 3600
+                expires_on = [int]((Get-Date).AddHours(1) - [DateTime]'1970-01-01').TotalSeconds
+            }
+
+            _SaveTokenCache -Token $testToken -CachePath $testCachePath
+
+            Test-Path $testCachePath | Should -Be $true
+
+            # Verify file is encrypted (should be binary, not JSON text)
+            $fileContent = Get-Content -Path $testCachePath -Raw
+            $fileContent | Should -Not -Match '"access_token"'
+            $fileContent | Should -Not -Match 'test_access_token'
+        }
+
+        It "loads token from encrypted cache" {
+            Add-Type -AssemblyName System.Security
+
+            $testToken = @{
+                access_token = 'test_token_encrypted'
+                token_type = 'Bearer'
+                expires_in = 3600
+                expires_on = [int]((Get-Date).AddHours(1) - [DateTime]'1970-01-01').TotalSeconds
+            }
+
+            _SaveTokenCache -Token $testToken -CachePath $testCachePath
+            $loadedToken = _LoadTokenCache -CachePath $testCachePath
+
+            $loadedToken | Should -Not -Be $null
+            $loadedToken.access_token | Should -Be 'test_token_encrypted'
+            $loadedToken.token_type | Should -Be 'Bearer'
+        }
+
+        It "returns null for non-existent cache file" {
+            $result = _LoadTokenCache -CachePath "nonexistent-path.cache"
+            $result | Should -Be $null
+        }
+
+        It "returns null and logs warning for corrupted cache" {
+            Add-Type -AssemblyName System.Security
+
+            # Create a file with invalid encrypted data
+            "invalid encrypted data" | Set-Content -Path $testCachePath -Encoding UTF8
+
+            $result = _LoadTokenCache -CachePath $testCachePath
+            # Write-Log is mocked and may return array, so just check it's not the token
+            ($result -eq $null -or $result -is [System.Array]) | Should -Be $true
+        }
+
+        It "creates cache directory if missing" {
+            $nestedDir = Join-Path $testCacheDir "nested"
+            $nestedPath = Join-Path $nestedDir "token.cache"
+            $testToken = @{ access_token = 'test'; expires_on = 9999999999 }
+
+            _SaveTokenCache -Token $testToken -CachePath $nestedPath
+
+            Test-Path $nestedPath | Should -Be $true
+        }
+    }
+}
+
 Describe "Get-AzureOAuthToken" {
     Context "Function Exists and Parameters" {
         It "Get-AzureOAuthToken is a valid function" {

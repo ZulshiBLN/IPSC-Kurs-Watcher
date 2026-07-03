@@ -60,7 +60,7 @@ function _GetCredentialFromStore {
 }
 
 function _LoadTokenCache {
-    <# .SYNOPSIS Load cached OAuth2 token from file #>
+    <# .SYNOPSIS Load cached OAuth2 token from encrypted file #>
     param([string]$CachePath)
 
     try {
@@ -68,7 +68,16 @@ function _LoadTokenCache {
             return $null
         }
 
-        $cached = Get-Content -Path $CachePath -Raw | ConvertFrom-Json
+        $encryptedBytes = [System.IO.File]::ReadAllBytes($CachePath)
+
+        $decryptedBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
+            $encryptedBytes,
+            [System.Text.Encoding]::UTF8.GetBytes("IPSC-Token-Cache-v1"),
+            [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+        )
+
+        $tokenJson = [System.Text.Encoding]::UTF8.GetString($decryptedBytes)
+        $cached = $tokenJson | ConvertFrom-Json
         return $cached
     }
     catch {
@@ -78,7 +87,7 @@ function _LoadTokenCache {
 }
 
 function _SaveTokenCache {
-    <# .SYNOPSIS Save OAuth2 token to cache file #>
+    <# .SYNOPSIS Save OAuth2 token to encrypted cache file #>
     param([object]$Token, [string]$CachePath)
 
     try {
@@ -87,7 +96,16 @@ function _SaveTokenCache {
             New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
         }
 
-        $Token | ConvertTo-Json | Set-Content -Path $CachePath -Encoding UTF8 -Force
+        $tokenJson = $Token | ConvertTo-Json
+        $tokenBytes = [System.Text.Encoding]::UTF8.GetBytes($tokenJson)
+
+        $encryptedBytes = [System.Security.Cryptography.ProtectedData]::Protect(
+            $tokenBytes,
+            [System.Text.Encoding]::UTF8.GetBytes("IPSC-Token-Cache-v1"),
+            [System.Security.Cryptography.DataProtectionScope]::LocalMachine
+        )
+
+        [System.IO.File]::WriteAllBytes($CachePath, $encryptedBytes)
     }
     catch {
         Write-Log -Level WARN -Message "Failed to save token cache" -Exception $_
