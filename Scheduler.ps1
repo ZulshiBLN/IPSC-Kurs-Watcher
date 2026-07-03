@@ -72,7 +72,7 @@ function Initialize-AppIdentity {
 
 $ScriptRoot = Split-Path $MyInvocation.MyCommand.Path
 
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Loading modules..."
+Write-Information "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Loading modules..." -InformationAction Continue
 
 try {
     # Core modules (no dependencies)
@@ -111,7 +111,7 @@ try {
     Write-Log -Level INFO -Message "Notifier modules loaded"
 }
 catch {
-    Write-Host "[ERROR] Module loading failed: $_" -ForegroundColor Red
+    Write-Error "[ERROR] Module loading failed: $_"
     exit 1
 }
 
@@ -146,7 +146,7 @@ try {
 }
 catch {
     Write-Log -Level ERROR -Message "Configuration or state loading failed" -Exception $_
-    Write-Host "[ERROR] $($_.Exception.Message)" -ForegroundColor Red
+    Write-Error "[ERROR] $($_.Exception.Message)"
     exit 1
 }
 
@@ -219,8 +219,8 @@ function Invoke-MonitoringCycle {
         }
         catch {
             $err = $_
-            Write-Host "[ERROR] Monitor execution failed: $($err.Exception.Message)" -ForegroundColor Red
-            if ($err.InvocationInfo) { Write-Host "  at $($err.InvocationInfo.ScriptName):$($err.InvocationInfo.ScriptLineNumber)" -ForegroundColor Red }
+            Write-Error "[ERROR] Monitor execution failed: $($err.Exception.Message)"
+            if ($err.InvocationInfo) { Write-Error "  at $($err.InvocationInfo.ScriptName):$($err.InvocationInfo.ScriptLineNumber)" }
         }
     }
 
@@ -328,7 +328,7 @@ else {
             Write-Log -Level ERROR -Message "Monitoring cycle failed" -Exception $_
         }
 
-        Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Sleeping for $interval minutes..."
+        Write-Information "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Sleeping for $interval minutes..." -InformationAction Continue
         Start-Sleep -Seconds ($interval * 60)
     }
 }
