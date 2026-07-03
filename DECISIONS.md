@@ -42,66 +42,206 @@ Kopiere dieses Template für neue Entscheidungen:
 
 ## ADR-001: Technology Stack Selection
 
-**Status:** [PENDING]
+**Status:** [ACCEPTED]
 
 **Context:**
-IPSC Kurs Watcher muss für verschiedene Betriebssysteme (Windows, Linux, macOS) funktionieren und regelmäßig Kursinformationen monitoren. Die Wahl des Tech-Stacks beeinflusst die Wartbarkeit, Performance und Deployment-Komplexität.
+IPSC Kurs Watcher ist Windows-only (Deployment via Scheduled Task). Anforderungen: Höchste Performance + Resilience, einfache Deployment, Solo-Entwicklung, Integration mit Windows-Ecosystem.
 
 **Decision:**
-[TBD – Abhängig von Anforderungen]
+### **PowerShell 5.1+ (Windows PowerShell)**
 
-Optionen zur Überlegung:
-- **Python 3.10+** – Einfach, cross-platform, gute Libraries (requests, BeautifulSoup, Pydantic)
-- **TypeScript/Node.js** – Schnell, JavaScript-Ecosystem
-- **Rust** – Performance, aber steiler Learning Curve
-- **Go** – Binaries, schnell, einfach zu deployen
+Gründe:
+- **Windows-native:** Direct access to WinAPI, Scheduled Task trivial, Windows Toast Notifications native
+- **Performance:** Compiled cmdlets, fast startup, minimal overhead
+- **Deployment:** Kein Runtime nötig, läuft auf jedem Windows ≥ Server 2016
+- **Solo Developer:** Deine PowerShell-Expertise (WinHarden, SharedMailboxProvisioner)
+- **HTML Scraping:** PowerShell + HtmlAgilityPack oder Regex völlig ausreichend
+- **Scheduled Task Integration:** Nativer Einsatzpunkt für PowerShell Scripts
+
+**Architecture:**
+- PowerShell 5.1 (Windows Standard)
+- Modules: Custom PS-Modules in src/ (monitors, notifiers, filters)
+- Dependencies: HtmlAgilityPack (NuGet), optional Pester für Tests
+- State: JSON (ConvertTo-Json / ConvertFrom-Json)
+- Config: JSON (ConvertFrom-Json)
+- Logging: Custom Write-Log function (strukturiert)
+- Build: build.ps1 (PSScriptAnalyzer validation)
+- Tests: Pester 5.0+
 
 **Consequences:**
-- (+) Cross-platform Support
-- (+) Easy to maintain
-- (-) Abhängig von Ecosystem + Libraries
-- (-) Performance-Trade-offs möglich
+- (+) **Windows-native:** Kein Cross-platform overhead
+- (+) **Highest Performance:** Direct WinAPI, fast startup
+- (+) **Minimal Dependencies:** PowerShell 5.1 vorinstalliert auf Windows Server 2016+
+- (+) **Expert Knowledge:** Du kennst PowerShell sehr gut
+- (+) **Deployment:** Script + Scheduled Task = trivial
+- (+) **Resilient:** Fehlerbehandlung + Logging built-in
+- (-) **Windows-only:** Kein Linux/macOS (aber nicht erforderlich)
+- (-) **No Native Web Framework:** HTML Scraping manuell via Regex oder HtmlAgilityPack
 
 **Alternatives:**
-- Monolithic single-language approach (simpler, aber weniger flexibel)
-- Microservices (komplexer, aber skalierbar)
+- Python 3.10+ (cross-platform, aber overkill & neuer Runtime nötig)
+- TypeScript/Node.js (cross-platform, aber heavier, nicht Windows-optimiert)
+- Go (sehr schnell, aber neue Sprache für dich)
+- C# / .NET (auch gut, aber PowerShell nativer für dich)
 
 **Implementation Notes:**
-- Tech-Stack sollte früh in Projekt-Setup entschieden werden
-- Update STRUCTURE.md Section 6 mit entschiedenem Stack
+- Siehe STRUCTURE.md Section 6: PowerShell 5.1+ Anforderungen, Module-System
+- Siehe ADR-002: Modul-Struktur (src/monitors/*.ps1, src/notifiers/*.ps1, etc.)
+- Build: `.\build.ps1 -Validate` (PSScriptAnalyzer)
+- Tests: `Invoke-Pester tests/` (Pester 5.0+)
+- Deployment: Scheduled Task mit PowerShell Script-Block
 
 ---
 
 ## ADR-002: Monitoring Architecture
 
-**Status:** [PENDING]
+**Status:** [ACCEPTED]
 
 **Context:**
-IPSC Kurs Watcher muss regelmäßig IPSC-Kurse monitoren (Schedule-Änderungen, Verfügbarkeit, etc.) und Benachrichtigungen senden. Die Architektur beeinflusst Skalierbarkeit und Wartbarkeit.
+IPSC Kurs Watcher muss shooting-store.ch/de/kategorie/kurse1 monitoren. Anforderungen:
+- Neue Kurse + Verfügbarkeitänderungen (Plätze frei/belegt)
+- Filter nach Kurs-Typ (Tryout, Basic, Basic 2.0, etc.)
+- Benachrichtigungen: Email, Webhook, Windows Toast
+- Config-File basierte Konfiguration
+- State-Persistierung: JSON-File
+- Poll-Frequenz: Konfigurierbar via Windows Scheduled Task
+- Deployment: Windows-only, Scheduled Task
+- Performance & Resilience: Höchste Priorität
 
 **Decision:**
-[TBD – Modulare Architektur empfohlen]
 
-Konzept:
-- **Core Engine:** Zentrale Koordination
-- **Monitors:** Unabhängige Module für verschiedene Quellen (z.B. IPSC-Website, externe APIs)
-- **Filters:** Datenaggregation und Filterung
-- **Notifiers:** Pluggable Benachrichtigungs-Module (Email, Webhook, Slack, etc.)
+### Modulare Event-Driven Architektur (PowerShell)
+
+Datenfluss:
+```
+Monitor (HTML Scraper)
+    ↓
+Filter (by Course Type)
+    ↓
+Deduplicator (Check State)
+    ↓
+Notifiers (Email, Webhook, Toast) → State Update
+```
+
+### Module Structure
+
+| Modul | Zweck | PowerShell Pattern |
+|-------|-------|-------------------|
+| **src/core/Scheduler.ps1** | Orchestrierung, Poll-Loop | Main loop, interval control |
+| **src/core/State.ps1** | State-Persistierung (JSON) | Read/Write JSON state file |
+| **src/monitors/MonitorShootingStore.ps1** | shooting-store.ch scrapen | Invoke-WebRequest, HTML parsing |
+| **src/filters/FilterByType.ps1** | Nach Kurs-Typ filtern | Array filter mit Kurs-Typen |
+| **src/notifiers/NotifyEmail.ps1** | Email versenden | Send-MailMessage (SMTP) |
+| **src/notifiers/NotifyWebhook.ps1** | Webhook (Discord, Slack) | Invoke-WebRequest (JSON) |
+| **src/notifiers/NotifyToast.ps1** | Windows Toast Notification | .NET WinRT API |
+| **src/utils/Logging.ps1** | Strukturierte Logs | Write-Output, JSON logs |
+| **src/utils/Config.ps1** | Config laden (JSON) | ConvertFrom-Json |
+
+### config.json Template
+
+```json
+{
+  "monitors": [
+    {
+      "name": "shooting-store",
+      "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
+      "poll_interval_minutes": 15,
+      "enabled": true,
+      "request_timeout_seconds": 30,
+      "retry_attempts": 3
+    }
+  ],
+  "filters": {
+    "course_types": ["Tryout", "Basic", "Basic 2.0"],
+    "min_availability": 1
+  },
+  "notifiers": {
+    "email": {
+      "enabled": true,
+      "recipients": ["user@example.com"],
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "use_tls": true,
+      "from_address": "watcher@example.com"
+    },
+    "webhook": {
+      "enabled": true,
+      "url": "https://hooks.slack.com/services/YOUR/WEBHOOK",
+      "timeout_seconds": 10
+    },
+    "toast": {
+      "enabled": true,
+      "app_id": "IPSC-Kurs-Watcher"
+    }
+  },
+  "state": {
+    "file_path": "data/state.json",
+    "retention_days": 30,
+    "backup_count": 3
+  },
+  "logging": {
+    "log_dir": "logs",
+    "max_log_size_mb": 10,
+    "retention_days": 30,
+    "log_level": "INFO"
+  }
+}
+```
+
+### state.json Structure
+
+```json
+{
+  "last_notified": [
+    {
+      "course_id": "shooting-store-123",
+      "course_name": "Basic Pistol",
+      "course_type": "Basic",
+      "notified_at": "2026-07-03T14:30:00Z",
+      "notification_channels": ["email", "webhook"],
+      "hash": "abc123def456"
+    }
+  ],
+  "last_poll": "2026-07-03T14:30:00Z",
+  "last_error": null,
+  "version": 1
+}
+```
+
+### Deployment: Windows Scheduled Task
+
+```powershell
+# Register scheduled task
+$TaskName = "IPSC-Kurs-Watcher"
+$Action = New-ScheduledTaskAction -Execute "powershell.exe" `
+  -Argument "-NoProfile -ExecutionPolicy Bypass -File `"C:\Scripts\IPSC-Kurs-Watcher\Watcher.ps1`""
+$Trigger = New-ScheduledTaskTrigger -RepetitionInterval (New-TimeSpan -Minutes 15) -Once -At (Get-Date)
+Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -RunLevel Highest
+```
 
 **Consequences:**
-- (+) Einfach neue Monitors/Notifiers hinzufügen
-- (+) Unabhängig testbar
-- (+) Fault isolation (1 Monitor-Fehler crasht nicht alles)
-- (-) Mehr Code/Komplexität als Monolith
-- (-) Koordination zwischen Modulen nötig
+- (+) **High Performance:** PowerShell native, minimal overhead, direct WinAPI zugriff
+- (+) **Resilient:** Retry-Logic mit exponential backoff, graceful error handling
+- (+) **Modular:** Monitors, Filters, Notifiers unabhängig testbar + erweiterbar
+- (+) **Simple State:** JSON-File, keine DB nötig
+- (+) **Windows-native:** Scheduled Task Integration trivial
+- (+) **Fault Isolation:** 1 Notifier-Fehler blockiert nicht andere
+- (-) **HTML Scraping Fragility:** shooting-store Layout-Änderungen können Parser brechen
+- (-) **Polling Strategy:** Nicht ideal für sehr häufige Checks (aber 15 Min Intervall realistisch)
+- (-) **PowerShell Performance:** Nicht optimal für massive Datamenge (aber für dieses Use-Case ok)
 
 **Alternatives:**
-- Monolithic design (einfacher, aber harder to extend)
-- Microservices (overkill für dieses Projekt)
+- Webhook-based (shooting-store müsste API expose – nicht realistisch)
+- Full microservices (Overkill)
+- Monolithic Script (weniger wartbar, weniger erweiterbar)
 
 **Implementation Notes:**
-- Siehe STRUCTURE.md Section 2 (Design-Prinzipien)
-- Modulare Architektur erlaubt späte Entscheidungen über Deployment-Strategie
+- Siehe STRUCTURE.md Section 1: PowerShell Folder-Layout
+- HTML Parsing: BeautifulSoup-äquivalent via PowerShell (HtmlAgilityPack oder Regex)
+- Error Handling: ADR-004 (Retry-Logic, Logging)
+- State Management: Atomic JSON writes (temp file → move)
+- Logging: ADR-005 (strukturierte Logs, Rotation)
+- Configuration: Externe config.json (kein hardcoding)
 
 ---
 
