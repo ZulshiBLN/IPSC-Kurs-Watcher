@@ -106,6 +106,120 @@ function _NewToastBody {
     return $lines -join ' | '
 }
 
+function _NewToastXML {
+    <#
+    .SYNOPSIS
+    Build Windows Toast XML with title, body, sound, and action.
+
+    .PARAMETER Title
+    Toast title text
+
+    .PARAMETER Body
+    Toast body text
+
+    .PARAMETER ActionUrl
+    URL to open when Toast is clicked
+
+    .PARAMETER SoundEnabled
+    Whether to play notification sound
+
+    .OUTPUTS
+    String - XML template for Toast notification
+    #>
+    param(
+        [string]$Title,
+        [string]$Body,
+        [string]$ActionUrl,
+        [bool]$SoundEnabled = $true
+    )
+
+    $escapedTitle = [System.Security.SecurityElement]::Escape($Title)
+    $escapedBody = [System.Security.SecurityElement]::Escape($Body)
+    $escapedUrl = [System.Security.SecurityElement]::Escape($ActionUrl)
+
+    $audio = if ($SoundEnabled) {
+        '<audio src="ms-winsoundevent:Notification.Default"/>'
+    } else {
+        '<audio silent="true"/>'
+    }
+
+    $xml = @"
+<?xml version="1.0" encoding="utf-8"?>
+<toast>
+  <visual>
+    <binding template="ToastText02">
+      <text id="1">$escapedTitle</text>
+      <text id="2">$escapedBody</text>
+    </binding>
+  </visual>
+  $audio
+  <actions>
+    <action activationType="protocol" arguments="$escapedUrl" content="View Courses"/>
+  </actions>
+</toast>
+"@
+
+    return $xml
+}
+
+function _InvokeToastAction {
+    <#
+    .SYNOPSIS
+    Open URL in default browser (handles Toast click action).
+
+    .PARAMETER MainPageUrl
+    URL to open in browser
+    #>
+    param([string]$MainPageUrl)
+
+    try {
+        if ([string]::IsNullOrWhiteSpace($MainPageUrl)) {
+            return
+        }
+
+        Start-Process $MainPageUrl -ErrorAction Stop
+    }
+    catch {
+        Write-Log -Level WARN -Message "Failed to open Toast action URL" `
+            -Context @{ url = $MainPageUrl } -Exception $_
+    }
+}
+
+function _SendToastViaWinRT {
+    <#
+    .SYNOPSIS
+    Send Toast via Windows.UI.Notifications WinRT API.
+
+    .PARAMETER ToastXml
+    XML template for Toast
+
+    .OUTPUTS
+    Boolean - $true if successful, $false if failed
+    #>
+    param([string]$ToastXml)
+
+    try {
+        [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null
+        [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] > $null
+
+        $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
+        $xml.LoadXml($ToastXml)
+
+        $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
+
+        $appId = 'Microsoft.PowerShell_31bf3856ad364e35_15.1.0.0_x64__8wekyb3d8bbwe'
+
+        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($appId).Show($toast)
+
+        return $true
+    }
+    catch {
+        Write-Log -Level WARN -Message "Failed to display Toast via WinRT" `
+            -Context @{ error = $_.Exception.Message } -Exception $_
+        return $false
+    }
+}
+
 function Send-ToastNotification {
     <#
     .SYNOPSIS
@@ -152,34 +266,51 @@ function Send-ToastNotification {
     if ($PSCmdlet.ShouldProcess("Toast notifications", "Send $($Alerts.Count) alerts")) {
         try {
             $groupedAlerts = Group-AlertsByType -Alerts $Alerts
-
             $toastCount = 0
+            $failureCount = 0
+
             foreach ($group in $groupedAlerts) {
                 try {
                     $title = _NewToastTitle -AlertGroup $group
                     $body = _NewToastBody -AlertGroup $group -MaxCourses $Config.max_courses_per_group
 
-                    Write-Log -Level INFO -Message "Toast notification" `
-                        -Context @{
-                            alert_type = $group.AlertType
-                            count = $group.Count
-                            title = $title
-                            body = $body
-                        }
+                    $toastXml = _NewToastXML -Title $title `
+                                           -Body $body `
+                                           -ActionUrl $Config.main_page_url `
+                                           -SoundEnabled $Config.sound_enabled
 
-                    $toastCount++
+                    $sendSuccess = _SendToastViaWinRT -ToastXml $toastXml
+
+                    if ($sendSuccess) {
+                        Write-Log -Level INFO -Message "Toast notification sent" `
+                            -Context @{
+                                alert_type = $group.AlertType
+                                count = $group.Count
+                                title = $title
+                            }
+                        $toastCount++
+                    }
+                    else {
+                        $failureCount++
+                    }
                 }
                 catch {
                     Write-Log -Level WARN -Message "Failed to create Toast for $($group.AlertType)" `
                         -Context @{ count = $group.Count } -Exception $_
+                    $failureCount++
                 }
             }
 
-            Write-Log -Level INFO -Message "Toast notifications sent" `
-                -Context @{ total_alerts = $Alerts.Count; groups = $groupedAlerts.Count; toasts_sent = $toastCount }
+            Write-Log -Level INFO -Message "Toast notifications completed" `
+                -Context @{
+                    total_alerts = $Alerts.Count
+                    groups = $groupedAlerts.Count
+                    sent = $toastCount
+                    failed = $failureCount
+                }
         }
         catch {
-            Write-Log -Level ERROR -Message "Toast notification failed" `
+            Write-Log -Level ERROR -Message "Toast notification pipeline failed" `
                 -Context @{ alert_count = $Alerts.Count } -Exception $_
         }
     }
