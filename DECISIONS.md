@@ -715,20 +715,70 @@ IPSC Kurs Watcher sollte konfigurierbar sein für verschiedene Use-Cases ohne Co
 
 ---
 
+## Pre-Implementation Decisions (FINAL CLARIFICATIONS)
+
+### Execution Model: Hybrid ✅
+- **Watcher:** Runs independently via Windows Scheduled Task
+- **ConfigApp (GUI):** Separate WPF app for configuration + status
+- **Communication:** Via State file (`data/state.json`) + Logs
+- **Independence:** Watcher runs even if GUI not started
+
+### Logging: Hybrid (JSON + Plaintext) ✅
+- **Internal Storage:** JSON-structured logs (machine-readable)
+- **GUI Display:** Plaintext rendering (human-readable)
+- **Format:** `{timestamp}|{level}|{monitor}|{message}|{context}`
+- **Rotation:** Daily rotation, 30-day retention
+
+### Error Recovery: Aggressive Retry ✅
+- **Strategy:** 3x retry with exponential backoff (1s, 2s, 4s)
+- **Scope:** Monitor failures, Network timeouts, Notifier failures
+- **Fallback:** If all retries fail: log error + skip notification
+- **Next Attempt:** Next scheduled poll cycle
+
+### Parallel Execution: Full Async (PowerShell Jobs) ✅
+- **All Monitors:** Start as background jobs simultaneously
+- **Performance:** ~5 monitors in 1-2 minutes (vs. 20+ sequential)
+- **Wait:** Scheduler waits for all jobs + timeout protection
+- **Resource:** Max 10 concurrent jobs
+
+### Update Strategy: Auto-Migration with Backup ✅
+- **Schema Changes:** Automatic migration when loading old config
+- **Backup:** Old config saved as `config.json.backup.YYYYMMDD`
+- **Validation:** New schema validated after migration
+- **Rollback:** User can restore from backup if needed
+- **Logging:** Migration events logged for transparency
+
+### Startup Sequence: Independent ✅
+- **Scheduled Task:** Auto-starts Watcher at configured interval
+- **GUI Optional:** User can start ConfigApp anytime (or never)
+- **First Run:** setup.ps1 registers Scheduled Task + initializes folders
+- **Automatic:** Watcher runs independent of GUI
+
+### Uninstall: Clean Remove ✅
+- **Removed:** Scheduled Task, Shortcuts, Source code (src/)
+- **Preserved:** config.json, data/, logs/ (user data)
+- **Process:** uninstall.ps1 with confirmation prompts
+- **Reversible:** Restore from backup if needed
+
+---
+
 ## Status Summary
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| 001 | Technology Stack | [PENDING] |
-| 002 | Monitoring Architecture | [PENDING] |
-| 003 | Testing Framework | [PENDING] |
-| 004 | Error Handling | [PENDING] |
-| 005 | Logging Strategy | [PENDING] |
-| 006 | Code Style | [PENDING] |
-| 007 | Naming Conventions | [PENDING] |
-| 008 | Module Structure | [PENDING] |
-| 009 | Git Workflow | [PENDING] |
-| 010 | Configuration | [PENDING] |
+| 001 | Technology Stack | [ACCEPTED] ✅ PowerShell 5.1+ |
+| 002 | Monitoring Architecture | [ACCEPTED] ✅ Modular Event-Driven |
+| 003 | Testing Framework | [ACCEPTED] ✅ Pester Unit + Integration |
+| 004 | Error Handling | [ACCEPTED] ✅ Aggressive 3x Retry |
+| 005 | Logging Strategy | [ACCEPTED] ✅ Hybrid JSON+Text |
+| 006 | Code Style | [PENDING] → Phase 2 |
+| 007 | Naming Conventions | [PENDING] → Phase 2 |
+| 008 | Module Structure | [ACCEPTED] ✅ Factory Pattern |
+| 009 | Git Workflow | [PENDING] → Established |
+| 009b | GUI Architecture | [ACCEPTED] ✅ WPF 5 Tabs |
+| 010 | Configuration & Secrets | [ACCEPTED] ✅ JSON + DPAPI |
+
+**ALL CRITICAL DECISIONS MADE: READY FOR IMPLEMENTATION** ✅
 
 ---
 
