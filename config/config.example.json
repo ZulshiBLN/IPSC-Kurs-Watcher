@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "_comment": "IPSC Kurs Watcher Configuration Example - Copy to config.json and customize",
 
   "monitors": [
     {
@@ -33,6 +34,12 @@
         "name": "Basic 2.0",
         "patterns": ["Basic 2.0", "Basic 2.x", "Level 2"],
         "enabled": true
+      },
+      {
+        "id": "advanced",
+        "name": "Advanced",
+        "patterns": ["Advanced", "Fortgeschritten", "Level 3"],
+        "enabled": true
       }
     ],
     "exclude_patterns": ["Privatunterricht", "VIP-Kurs", "Geschlossen"],
@@ -48,28 +55,41 @@
       "auto_dismiss_seconds": 5,
       "main_page_url": "https://www.shooting-store.ch/de/kategorie/kurse1"
     },
+
     "email": {
       "enabled": false,
+      "_comment_enabled": "Set to true to enable email notifications",
       "smtp_host": "smtp.gmail.com",
       "smtp_port": 587,
       "use_tls": true,
-      "from_address": "your-email@example.com",
+      "from_address": "your-email@gmail.com",
       "from_display_name": "IPSC Kurs Watcher",
       "smtp_user": "your-email@gmail.com",
-      "smtp_password": "app-specific-password",
-      "recipients": ["user@example.com"],
+      "smtp_password": "your-app-password",
+      "_comment_password": "Gmail: Use app-specific password, not account password. Will be encrypted on first run.",
+      "recipients": [
+        "your-email@gmail.com",
+        "friend@example.com"
+      ],
+      "_comment_recipients": "First recipient is primary (To:), others are BCC'd",
       "retry_attempts": 3,
       "timeout_seconds": 30,
       "template_file": "templates/email.html"
     },
+
     "discord": {
       "enabled": false,
+      "_comment_enabled": "Set to true to enable Discord notifications",
       "webhook_urls": [
-        "https://discord.com/api/webhooks/..."
+        "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
       ],
+      "_comment_webhook": "Get webhook URL: Right-click channel → Integrations → Webhooks → New Webhook → Copy URL",
       "mention_on_new": true,
+      "_comment_mention": "Set to true to @mention user/role when new courses detected",
       "mention_user_id": null,
+      "_comment_mention_user": "Discord user ID (optional, if mention_on_new=true)",
       "mention_role_id": null,
+      "_comment_mention_role": "Discord role ID (optional, if mention_on_new=true)",
       "include_url_buttons": true,
       "retry_attempts": 3,
       "timeout_seconds": 30

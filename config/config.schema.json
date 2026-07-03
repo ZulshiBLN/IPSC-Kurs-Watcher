@@ -118,50 +118,159 @@
       "type": "object",
       "description": "Notification channel configurations",
       "properties": {
-        "email": {
+        "windows_toast": {
           "type": "object",
+          "description": "Windows Toast notifications (v0.1)",
           "properties": {
             "enabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "default": true,
+              "description": "Enable/disable Toast notifications"
+            },
+            "sound_enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Play sound on Toast notification"
+            },
+            "group_by_type": {
+              "type": "boolean",
+              "default": true,
+              "description": "Group alerts by type (NEW, REDUCED, SOLD_OUT)"
+            },
+            "max_courses_per_group": {
+              "type": "integer",
+              "default": 5,
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Maximum courses per Toast notification"
+            },
+            "auto_dismiss_seconds": {
+              "type": "integer",
+              "default": 5,
+              "minimum": 3,
+              "maximum": 15,
+              "description": "Seconds before Toast auto-dismisses"
+            },
+            "main_page_url": {
+              "type": "string",
+              "format": "uri",
+              "description": "URL to open when Toast is clicked"
+            }
+          }
+        },
+        "email": {
+          "type": "object",
+          "description": "Email notifications (v0.1 planned)",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable/disable email notifications"
             },
             "smtp_host": {
-              "type": "string"
+              "type": "string",
+              "description": "SMTP server hostname"
             },
             "smtp_port": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 65535
+              "maximum": 65535,
+              "description": "SMTP server port"
+            },
+            "use_tls": {
+              "type": "boolean",
+              "default": true,
+              "description": "Use TLS/SSL for SMTP"
             },
             "from_address": {
               "type": "string",
-              "format": "email"
+              "format": "email",
+              "description": "Sender email address"
+            },
+            "from_display_name": {
+              "type": "string",
+              "description": "Sender display name"
+            },
+            "smtp_user": {
+              "type": "string",
+              "description": "SMTP authentication username"
+            },
+            "smtp_password": {
+              "type": "string",
+              "description": "SMTP authentication password (stored encrypted via DPAPI)"
             },
             "recipients": {
               "type": "array",
               "items": {
                 "type": "string",
                 "format": "email"
-              }
+              },
+              "description": "Email recipient addresses (primary + BCC)"
+            },
+            "retry_attempts": {
+              "type": "integer",
+              "default": 3,
+              "minimum": 1,
+              "description": "SMTP retry attempts"
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "default": 30,
+              "minimum": 5,
+              "description": "SMTP connection timeout"
+            },
+            "template_file": {
+              "type": "string",
+              "description": "Path to HTML email template"
             }
           }
         },
         "discord": {
           "type": "object",
+          "description": "Discord webhook notifications (v0.1 planned)",
           "properties": {
             "enabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "default": false,
+              "description": "Enable/disable Discord notifications"
             },
-            "webhook_url": {
-              "type": "string",
-              "format": "uri"
-            }
-          }
-        },
-        "windows_toast": {
-          "type": "object",
-          "properties": {
-            "enabled": {
-              "type": "boolean"
+            "webhook_urls": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri"
+              },
+              "description": "Discord webhook URLs (can be multiple channels)"
+            },
+            "mention_on_new": {
+              "type": "boolean",
+              "default": true,
+              "description": "Mention user/role when NEW courses detected"
+            },
+            "mention_user_id": {
+              "type": ["string", "null"],
+              "description": "Discord user ID to mention (optional)"
+            },
+            "mention_role_id": {
+              "type": ["string", "null"],
+              "description": "Discord role ID to mention (optional)"
+            },
+            "include_url_buttons": {
+              "type": "boolean",
+              "default": true,
+              "description": "Include clickable course URL buttons"
+            },
+            "retry_attempts": {
+              "type": "integer",
+              "default": 3,
+              "minimum": 1,
+              "description": "Webhook retry attempts"
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "default": 30,
+              "minimum": 5,
+              "description": "Webhook request timeout"
             }
           }
         }
