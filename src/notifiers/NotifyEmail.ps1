@@ -426,8 +426,8 @@ function Get-AzureOAuthToken {
         [ValidateNotNullOrEmpty()][string]$TenantId,
         [ValidateNotNullOrEmpty()][string]$ClientId,
         [ValidateNotNullOrEmpty()][string]$ClientSecret,
-        [string]$CachePath = "data/.token_cache.json",
-        [int]$TimeoutSeconds = 30
+        [ValidateNotNullOrEmpty()][string]$CachePath = "data/.token_cache.json",
+        [ValidateRange(1, 600)][int]$TimeoutSeconds = 30
     )
 
     try {
@@ -475,7 +475,7 @@ function Send-EmailNotification {
     None
     #>
     [CmdletBinding(SupportsShouldProcess)]
-    param([object[]]$Alerts, [object]$Config)
+    param([ValidateNotNull()][object[]]$Alerts, [ValidateNotNull()][object]$Config)
 
     if (-not $Config.enabled) {
         return

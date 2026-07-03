@@ -35,7 +35,7 @@ function Invoke-FilterPipeline {
     Returns empty array for null/empty input. Each filter is optional.
     #>
     [CmdletBinding()]
-    param([object[]]$Courses, [object]$FilterConfig)
+    param([ValidateNotNull()][object[]]$Courses, [ValidateNotNull()][object]$FilterConfig)
     if (-not $Courses) { return @() }
     $result = $Courses
     if ($FilterConfig.course_types) { $result = Get-FilteredCoursesByType -Courses $result -TypeFilters $FilterConfig.course_types }

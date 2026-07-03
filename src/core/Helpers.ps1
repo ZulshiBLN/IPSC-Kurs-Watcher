@@ -32,7 +32,7 @@ function ConvertTo-SafeJson {
     Errors are logged but do not halt execution.
     #>
     [CmdletBinding()]
-    param([Parameter(ValueFromPipeline)][object]$InputObject, [int]$Depth = 10)
+    param([Parameter(ValueFromPipeline)][ValidateNotNull()][object]$InputObject, [ValidateRange(1, 100)][int]$Depth = 10)
     process {
         try { $InputObject | ConvertTo-Json -Depth $Depth -ErrorAction Stop }
         catch { Write-Error "JSON conversion failed: $_"; $null }
@@ -62,7 +62,7 @@ function ConvertFrom-SafeJson {
     Errors are logged but do not halt execution.
     #>
     [CmdletBinding()]
-    param([Parameter(ValueFromPipeline)][string]$JsonString)
+    param([Parameter(ValueFromPipeline)][ValidateNotNullOrEmpty()][string]$JsonString)
     process {
         try { $JsonString | ConvertFrom-Json -ErrorAction Stop }
         catch { Write-Error "JSON parse error: $_"; $null }
@@ -92,7 +92,7 @@ function Test-FilePath {
     Directories return $false; only regular files return $true.
     #>
     [CmdletBinding()]
-    param([string]$Path)
+    param([ValidateNotNullOrEmpty()][string]$Path)
     if (-not (Test-Path $Path)) { return $false }
     if (!(Get-Item $Path).PSIsContainer) { return $true }
     return $false
@@ -129,7 +129,7 @@ function Test-ValidUrl {
     Only http and https schemes are allowed. Relative URLs return $false.
     #>
     [CmdletBinding()]
-    param([string]$Url)
+    param([ValidateNotNullOrEmpty()][string]$Url)
 
     if (-not $Url) { return $false }
 
@@ -174,7 +174,7 @@ function Get-FileDirectory {
     Errors are logged but do not throw.
     #>
     [CmdletBinding()]
-    param([string]$Path)
+    param([ValidateNotNullOrEmpty()][string]$Path)
     if (-not (Test-Path $Path)) { try { New-Item -ItemType Directory -Path $Path -Force | Out-Null } catch { Write-Error "Failed to create directory $Path : $_"; return $null } }
     return $Path
 }
@@ -210,7 +210,7 @@ function Invoke-WithRetry {
     Final attempt failure throws the error; no swallowing.
     #>
     [CmdletBinding()]
-    param([scriptblock]$ScriptBlock, [int]$MaxAttempts = 3, [int]$BaseDelaySeconds = 1)
+    param([ValidateNotNull()][scriptblock]$ScriptBlock, [ValidateRange(1, 100)][int]$MaxAttempts = 3, [ValidateRange(0.1, 300)][int]$BaseDelaySeconds = 1)
     $attempt = 0; $lastError = $null
     while ($attempt -lt $MaxAttempts) { try { return & $ScriptBlock } catch { $attempt++; $lastError = $_; if ($attempt -lt $MaxAttempts) { $delay = [Math]::Pow(2, $attempt - 1) * $BaseDelaySeconds; Start-Sleep -Seconds $delay } } }
     throw $lastError
@@ -292,10 +292,10 @@ function Invoke-SecureWebRequest {
     [CmdletBinding()]
     param(
         [ValidateNotNullOrEmpty()][string]$Uri,
-        [string]$Method = 'GET',
+        [ValidateNotNullOrEmpty()][string]$Method = 'GET',
         [hashtable]$Headers,
         [object]$Body,
-        [int]$TimeoutSeconds = 30
+        [ValidateRange(1, 600)][int]$TimeoutSeconds = 30
     )
 
     try {
@@ -416,6 +416,6 @@ function ConvertTo-UnixTimestamp {
     Uses PowerShell's Get-Date -UFormat %s for conversion.
     #>
     [CmdletBinding()]
-    param([datetime]$DateTime)
+    param([ValidateNotNull()][datetime]$DateTime)
     [int64][double]::Parse((Get-Date $DateTime -UFormat %s))
 }

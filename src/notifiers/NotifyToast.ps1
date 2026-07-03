@@ -155,8 +155,8 @@ function Send-ToastNotification {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
-        [Parameter(Mandatory)][object[]]$Alerts,
-        [Parameter(Mandatory)][object]$Config
+        [Parameter(Mandatory)][ValidateNotNull()][object[]]$Alerts,
+        [Parameter(Mandatory)][ValidateNotNull()][object]$Config
     )
 
     if (-not $Config.enabled) { return }

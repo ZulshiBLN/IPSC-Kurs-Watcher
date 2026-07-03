@@ -26,7 +26,7 @@ function Test-CourseType {
     Uses PowerShell -match operator (case-insensitive regex).
     #>
     [CmdletBinding()]
-    param([string]$CourseName, [string[]]$Patterns)
+    param([ValidateNotNullOrEmpty()][string]$CourseName, [ValidateNotNull()][string[]]$Patterns)
     foreach ($pattern in $Patterns) { if ($CourseName -match $pattern) { return $true } }
     return $false
 }
@@ -61,7 +61,7 @@ function Get-FilteredCoursesByType {
     Matches are case-insensitive via regex. Returns empty array for null/empty input.
     #>
     [CmdletBinding()]
-    param([object[]]$Courses, [object[]]$TypeFilters)
+    param([ValidateNotNull()][object[]]$Courses, [ValidateNotNull()][object[]]$TypeFilters)
     if (-not $Courses) { return @() }
     $enabledFilters = @($TypeFilters | Where-Object { $_.enabled })
     if ($enabledFilters.Count -eq 0) { return $Courses }

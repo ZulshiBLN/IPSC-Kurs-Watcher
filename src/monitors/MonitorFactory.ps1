@@ -27,7 +27,7 @@ function Get-Monitor {
     Throws error if provider is unknown.
     #>
     [CmdletBinding()]
-    param([object]$Config)
+    param([ValidateNotNull()][object]$Config)
     switch ($Config.provider) {
         'shooting-store' { return [CourseMonitor]::new($Config) }
         default { throw "Unknown provider: $($Config.provider)" }

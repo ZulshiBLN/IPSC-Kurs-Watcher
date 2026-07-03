@@ -17,7 +17,7 @@ function Send-DiscordNotification {
     Discord configuration from config.json
     #>
     [CmdletBinding(SupportsShouldProcess)]
-    param([object[]]$Alerts, [object]$Config)
+    param([ValidateNotNull()][object[]]$Alerts, [ValidateNotNull()][object]$Config)
 
     if (-not $Config.enabled) { return }
     if (-not $Alerts -or $Alerts.Count -eq 0) { return }

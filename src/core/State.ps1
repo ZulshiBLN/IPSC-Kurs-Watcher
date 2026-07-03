@@ -27,7 +27,7 @@ function Get-State {
     File encoding is always UTF-8. Gracefully handles missing files and parse errors.
     #>
     [CmdletBinding()]
-    param([string]$StateFile = 'data/state.json')
+    param([ValidateNotNullOrEmpty()][string]$StateFile = 'data/state.json')
     $stateDir = Split-Path $StateFile
     if ($stateDir -and -not (Test-Path $stateDir)) { New-Item -ItemType Directory -Path $stateDir -Force | Out-Null }
 
@@ -72,7 +72,7 @@ function Save-State {
     File encoding is always UTF-8.
     #>
     [CmdletBinding(SupportsShouldProcess)]
-    param([hashtable]$State, [string]$StateFile = 'data/state.json')
+    param([ValidateNotNull()][hashtable]$State, [ValidateNotNullOrEmpty()][string]$StateFile = 'data/state.json')
     $stateDir = Split-Path $StateFile
     if ($stateDir -and -not (Test-Path $stateDir)) { New-Item -ItemType Directory -Path $stateDir -Force | Out-Null }
     try {
@@ -132,7 +132,7 @@ function Merge-CourseState {
     Hashtable with 'alerts' (new, reduced, sold_out) and 'updated_state' (merged courses for state.json)
     #>
     [CmdletBinding()]
-    param([object[]]$CurrentCourses, [object[]]$TrackedCourses)
+    param([ValidateNotNull()][object[]]$CurrentCourses, [ValidateNotNull()][object[]]$TrackedCourses)
 
     $alerts = @{ new = @(); reduced = @(); sold_out = @() }
     $mergedState = @()
@@ -232,7 +232,7 @@ function Update-StateWithCourse {
     Hashtable with 'state' and 'alerts'
     #>
     [CmdletBinding(SupportsShouldProcess)]
-    param([hashtable]$State, [object[]]$CurrentCourses)
+    param([ValidateNotNull()][hashtable]$State, [ValidateNotNull()][object[]]$CurrentCourses)
 
     if ($PSCmdlet.ShouldProcess("state.last_notified", "Update course state")) {
         $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $State.last_notified

@@ -37,10 +37,10 @@ function Initialize-Logging {
     #>
     [CmdletBinding()]
     param(
-        [string]$LogDir = 'data/logs',
-        [string]$LogLevel = 'INFO',
-        [string]$Format = 'json',
-        [int]$RetentionDays = 30
+        [ValidateNotNullOrEmpty()][string]$LogDir = 'data/logs',
+        [ValidateSet('DEBUG', 'INFO', 'WARN', 'ERROR')][string]$LogLevel = 'INFO',
+        [ValidateNotNullOrEmpty()][string]$Format = 'json',
+        [ValidateRange(1, 365)][int]$RetentionDays = 30
     )
 
     $script:LoggingConfig.LogDir = $LogDir
@@ -89,7 +89,7 @@ function Write-Log {
     [CmdletBinding()]
     param(
         [ValidateSet('DEBUG', 'INFO', 'WARN', 'ERROR')][string]$Level = 'INFO',
-        [string]$Message,
+        [ValidateNotNullOrEmpty()][string]$Message,
         [hashtable]$Context,
         [object]$Exception
     )
