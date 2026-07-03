@@ -9,6 +9,32 @@ $script:LoggingConfig = @{
 }
 
 function Initialize-Logging {
+    <#
+    .SYNOPSIS
+    Configures and initializes the global logging system.
+
+    .DESCRIPTION
+    Sets up logging configuration (directory, level, format), creates log directory if missing,
+    and removes old log files exceeding retention period.
+
+    .PARAMETER LogDir
+    Directory where log files are stored. Defaults to 'data/logs'.
+
+    .PARAMETER LogLevel
+    Minimum log level (DEBUG, INFO, WARN, ERROR). Defaults to 'INFO'.
+
+    .PARAMETER Format
+    Log file format. Currently 'json' for structured logging. Defaults to 'json'.
+
+    .PARAMETER RetentionDays
+    Number of days to retain log files. Older files are deleted. Defaults to 30.
+
+    .EXAMPLE
+    Initialize-Logging -LogDir 'data/logs' -LogLevel 'INFO' -RetentionDays 30
+
+    .NOTES
+    Call this once at script startup before using Write-Log.
+    #>
     param(
         [string]$LogDir = 'data/logs',
         [string]$LogLevel = 'INFO',
@@ -29,6 +55,36 @@ function Initialize-Logging {
 }
 
 function Write-Log {
+    <#
+    .SYNOPSIS
+    Logs a message to console and file with optional context and exception details.
+
+    .DESCRIPTION
+    Writes structured log entries to both console and persistent JSON log file.
+    Console output is colored based on level (ERROR=red, WARN=yellow).
+    Context hashtable and Exception object are included in file output for debugging.
+
+    .PARAMETER Level
+    Log level (DEBUG, INFO, WARN, ERROR). Defaults to 'INFO'.
+
+    .PARAMETER Message
+    The main log message.
+
+    .PARAMETER Context
+    Optional hashtable with structured context (e.g., @{ monitor_id = 'abc'; attempt = 3 }).
+
+    .PARAMETER Exception
+    Optional exception object to include stack trace and line number.
+
+    .EXAMPLE
+    Write-Log -Level INFO -Message "Monitor started" -Context @{ monitor = 'shooting-store' }
+
+    .EXAMPLE
+    Write-Log -Level ERROR -Message "Failed to fetch courses" -Exception $_
+
+    .NOTES
+    Requires Initialize-Logging to be called first.
+    #>
     param(
         [ValidateSet('DEBUG', 'INFO', 'WARN', 'ERROR')][string]$Level = 'INFO',
         [string]$Message,
@@ -95,6 +151,30 @@ function Write-LogToFile-JSON {
 }
 
 function Remove-OldLog {
+    <#
+    .SYNOPSIS
+    Deletes log files older than retention period.
+
+    .DESCRIPTION
+    Removes watcher-*.log files from LogDir that exceed the RetentionDays threshold.
+    Respects -WhatIf and -Confirm for safe operation.
+
+    .PARAMETER LogDir
+    Directory containing log files to clean.
+
+    .PARAMETER RetentionDays
+    Number of days to retain. Files older than this are deleted.
+
+    .EXAMPLE
+    Remove-OldLog -LogDir 'data/logs' -RetentionDays 30
+
+    .EXAMPLE
+    Remove-OldLog -LogDir 'data/logs' -RetentionDays 30 -WhatIf
+    # Shows what would be deleted without deleting
+
+    .NOTES
+    Supports -WhatIf and -Confirm for safety. Silently continues on file access errors.
+    #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [string]$LogDir,

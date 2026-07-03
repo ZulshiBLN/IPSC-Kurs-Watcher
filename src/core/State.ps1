@@ -1,9 +1,35 @@
 ﻿#Requires -Version 5.1
 
-function Get-State { param([string]$StateFile = 'data/state.json')
+function Get-State {
+    <#
+    .SYNOPSIS
+    Loads course state from state.json, with automatic initialization if missing.
+
+    .DESCRIPTION
+    Reads state.json and returns a hashtable with version, last_poll timestamp, and tracked courses.
+    If the file doesn't exist, creates the directory and returns an initialized state.
+    On read error, returns a clean initial state rather than failing.
+
+    .PARAMETER StateFile
+    Path to state.json. Defaults to 'data/state.json' in the current directory.
+
+    .OUTPUTS
+    Hashtable with 'version' (int), 'last_poll' (ISO 8601 string), and 'last_notified' (array of course objects).
+
+    .EXAMPLE
+    $state = Get-State
+    # Returns: @{ version = 1; last_poll = '2026-07-03T10:30:00Z'; last_notified = @() }
+
+    .EXAMPLE
+    $state = Get-State -StateFile 'custom/state.json'
+
+    .NOTES
+    File encoding is always UTF-8. Gracefully handles missing files and parse errors.
+    #>
+    param([string]$StateFile = 'data/state.json')
     $stateDir = Split-Path $StateFile
     if ($stateDir -and -not (Test-Path $stateDir)) { New-Item -ItemType Directory -Path $stateDir -Force | Out-Null }
-    
+
     if (Test-Path $StateFile) {
         try {
             $stateJson = Get-Content $StateFile -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
@@ -14,7 +40,38 @@ function Get-State { param([string]$StateFile = 'data/state.json')
     return @{ version = 1; last_poll = [datetime]::UtcNow.ToString('o'); last_notified = @() }
 }
 
-function Save-State { param([hashtable]$State, [string]$StateFile = 'data/state.json')
+function Save-State {
+    <#
+    .SYNOPSIS
+    Persists course state to state.json with formatted JSON output.
+
+    .DESCRIPTION
+    Writes the state hashtable to JSON file, including all course data and timestamps.
+    Updates last_poll to current UTC time before persisting. Logs errors but does not throw.
+    Creates directory if it doesn't exist.
+
+    .PARAMETER State
+    Hashtable with 'version', 'last_poll', and 'last_notified' (array of courses).
+
+    .PARAMETER StateFile
+    Path to state.json. Defaults to 'data/state.json' in the current directory.
+
+    .EXAMPLE
+    $state = @{
+        version = 1
+        last_poll = '2026-07-03T10:30:00Z'
+        last_notified = @(
+            @{ id = 'course|2026-07-15|10:00'; name = 'Basic 1'; date = '2026-07-15'; availability = 5 }
+        )
+    }
+    Save-State -State $state
+
+    .NOTES
+    Does not throw on error; failures are logged via Write-Log with ERROR level.
+    File encoding is always UTF-8.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param([hashtable]$State, [string]$StateFile = 'data/state.json')
     $stateDir = Split-Path $StateFile
     if ($stateDir -and -not (Test-Path $stateDir)) { New-Item -ItemType Directory -Path $stateDir -Force | Out-Null }
     try {
@@ -45,7 +102,9 @@ function Save-State { param([hashtable]$State, [string]$StateFile = 'data/state.
         $json += '  ]'
         $json += "}"
 
-        $json -join "`n" | Set-Content $StateFile -Encoding UTF8 -ErrorAction Stop
+        if ($PSCmdlet.ShouldProcess($StateFile, "Write state")) {
+            $json -join "`n" | Set-Content $StateFile -Encoding UTF8 -ErrorAction Stop
+        }
     }
     catch { Write-Log -Level ERROR -Message "Failed to save state" -Context @{ file = $StateFile } -Exception $_ }
 }

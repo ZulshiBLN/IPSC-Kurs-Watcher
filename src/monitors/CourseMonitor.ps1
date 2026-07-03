@@ -1,5 +1,20 @@
 ﻿#Requires -Version 5.1
 
+<#
+.SYNOPSIS
+Monitors shooting-store.ch course catalog, fetching and parsing course data.
+
+.DESCRIPTION
+Inherits from MonitorBase. Implements web scraping for shooting-store.ch,
+extracting course details (name, date, time, price, availability) from HTML.
+Handles individual course detail page requests for availability information.
+
+.NOTES
+Provider: shooting-store (hardcoded)
+Parses HTML structure: artikel_box_content_wrapper, content artikel_box_name, artikel_preis
+Fetches availability from detail pages: data-update lagerinfo_anzeige
+Retries on failure up to RetryAttempts with TimeoutSeconds per request.
+#>
 class CourseMonitor : MonitorBase {
     CourseMonitor([object]$Config) : base($Config) { $this.Validate() }
 

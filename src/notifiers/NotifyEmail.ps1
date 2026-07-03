@@ -449,7 +449,7 @@ function Send-EmailNotification {
     .OUTPUTS
     None
     #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param([object[]]$Alerts, [object]$Config)
 
     if (-not $Config.enabled) {
@@ -457,6 +457,10 @@ function Send-EmailNotification {
     }
 
     if (-not $Alerts -or $Alerts.Count -eq 0) {
+        return
+    }
+
+    if (-not $PSCmdlet.ShouldProcess("email recipients", "Send $($Alerts.Count) course alerts")) {
         return
     }
 

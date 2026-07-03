@@ -11,10 +11,15 @@ function Send-DiscordNotification {
     .PARAMETER Config
     Discord configuration from config.json
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param([object[]]$Alerts, [object]$Config)
 
     if (-not $Config.enabled) { return }
     if (-not $Alerts -or $Alerts.Count -eq 0) { return }
+
+    if (-not $PSCmdlet.ShouldProcess("Discord webhooks", "Send $($Alerts.Count) course alerts")) {
+        return
+    }
 
     # v0.1: Stub - log alerts by type
     $byReason = $Alerts | Group-Object -Property alert_reason
