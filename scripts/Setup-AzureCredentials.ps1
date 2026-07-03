@@ -112,23 +112,38 @@ catch {
     exit 1
 }
 
-Write-Header "Updating Configuration"
+Write-Header "Setting Environment Variables"
+
+try {
+    # Set environment variables for this session
+    $env:IPSC_AZURE_TENANT_ID = $tenantId
+    $env:IPSC_AZURE_CLIENT_ID = $clientId
+    $env:IPSC_CREDENTIAL_STORE_PATH = $CredentialStorePath
+
+    Write-Success "Environment variables set for current session:"
+    Write-Success "  IPSC_AZURE_TENANT_ID = $tenantId"
+    Write-Success "  IPSC_AZURE_CLIENT_ID = $clientId"
+    Write-Success "  IPSC_CREDENTIAL_STORE_PATH = $CredentialStorePath"
+}
+catch {
+    Write-Error-Custom "Failed to set environment variables: $_"
+    exit 1
+}
+
+Write-Header "Updating Configuration (non-sensitive)"
 
 try {
     $config = Get-Content -Path $ConfigPath -Raw | ConvertFrom-Json
     $config.notifiers.email = @{
         enabled                = $true
         provider               = "graph"
-        tenant_id              = $tenantId
-        client_id              = $clientId
-        recipients             = @("google@brosche-bausinger.ch")
+        recipients             = @("michel@brosche-swiss.ch")
         retry_attempts         = 3
         timeout_seconds        = 30
         token_cache_path       = "data/.token_cache.json"
-        credential_store_path  = $CredentialStorePath
     }
     $config | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -Encoding UTF8
-    Write-Success "config.json updated with Azure credentials"
+    Write-Success "config.json updated (credentials via environment variables)"
 }
 catch {
     Write-Error-Custom "Failed to update config.json: $_"
@@ -145,6 +160,20 @@ Write-Host "Credential Store: $credentialFile" -ForegroundColor Gray
 Write-Host ""
 
 Write-Success "Setup completed successfully!"
+
+Write-Header "Persist Environment Variables (Recommended)"
+
+Write-Host "For persistent environment variables across sessions, set them in Windows:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Option 1: Using setx command (requires restart)" -ForegroundColor Yellow
+Write-Host "  setx IPSC_AZURE_TENANT_ID `"$tenantId`"" -ForegroundColor Gray
+Write-Host "  setx IPSC_AZURE_CLIENT_ID `"$clientId`"" -ForegroundColor Gray
+Write-Host "  setx IPSC_CREDENTIAL_STORE_PATH `"$CredentialStorePath`"" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Option 2: Using System Properties > Environment Variables (GUI)" -ForegroundColor Yellow
+Write-Host "  Click Start > Settings > System > About > Advanced system settings" -ForegroundColor Gray
+Write-Host "  Click 'Environment Variables' > New (User or System)" -ForegroundColor Gray
+Write-Host ""
 
 Write-Host "`nNext step: Run Scheduler.ps1 to test email notifications" -ForegroundColor Yellow
 Write-Host "Command: .\Scheduler.ps1 -RunOnce`n" -ForegroundColor Yellow

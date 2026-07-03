@@ -61,17 +61,13 @@
                                             "main_page_url":  "https://www.shooting-store.ch/de/kategorie/kurse1"
                                         },
                       "email":  {
-                                    "client_id":  "526942aa-5ae5-46cd-a83a-74a9706273f9",
                                     "enabled":  true,
                                     "retry_attempts":  3,
                                     "timeout_seconds":  30,
-                                    "credential_store_path":  "C:\\Users\\MichelBrosche\\AppData\\Roaming\\IPSC-Kurs-Watcher\\credentials",
                                     "recipients":  [
                                                        "michel@brosche-swiss.ch"
                                                    ],
-                                    "user_id":  "53f9a104-d93e-4c34-abbb-f408edc03c20",
                                     "token_cache_path":  "data/.token_cache.json",
-                                    "tenant_id":  "a1220dc4-a49a-4413-a7e3-3f9d29975682",
                                     "provider":  "graph"
                                 },
                       "discord":  {

@@ -465,9 +465,20 @@ function Send-EmailNotification {
     }
 
     try {
-        # Validate required config
-        if (-not $Config.tenant_id -or -not $Config.client_id) {
-            Write-Log -Level WARN -Message "Email notifier disabled: missing tenant_id or client_id"
+        # Get Azure credentials from environment variables
+        $tenantId = $env:IPSC_AZURE_TENANT_ID
+        $clientId = $env:IPSC_AZURE_CLIENT_ID
+        $userId = $env:IPSC_AZURE_USER_ID
+        $credStorePath = $env:IPSC_CREDENTIAL_STORE_PATH
+
+        # Validate required environment variables
+        if (-not $tenantId -or -not $clientId) {
+            Write-Log -Level WARN -Message "Email notifier disabled: missing IPSC_AZURE_TENANT_ID or IPSC_AZURE_CLIENT_ID environment variables"
+            return
+        }
+
+        if (-not $userId) {
+            Write-Log -Level WARN -Message "Email notifier disabled: missing IPSC_AZURE_USER_ID environment variable"
             return
         }
 
@@ -477,21 +488,13 @@ function Send-EmailNotification {
         }
 
         # Get credentials from encrypted credential store
-        $credStorePath = if ($Config.credential_store_path) {
-            if ([System.IO.Path]::IsPathRooted($Config.credential_store_path)) {
-                $Config.credential_store_path
-            }
-            else {
-                Join-Path (Get-Location) $Config.credential_store_path
-            }
-        }
-        else {
-            "$env:APPDATA\IPSC-Kurs-Watcher\credentials"
+        if (-not $credStorePath) {
+            $credStorePath = "$env:APPDATA\IPSC-Kurs-Watcher\credentials"
         }
 
         $clientSecret = _GetCredentialFromStore -StorePath $credStorePath
         if (-not $clientSecret) {
-            Write-Log -Level ERROR -Message "Email notifier failed: could not load Client Secret from credential store"
+            Write-Log -Level ERROR -Message "Email notifier failed: could not load Client Secret from credential store at $credStorePath"
             return
         }
 
@@ -503,7 +506,7 @@ function Send-EmailNotification {
             Join-Path (Get-Location) $Config.token_cache_path
         }
 
-        $token = Get-AzureOAuthToken -TenantId $Config.tenant_id -ClientId $Config.client_id `
+        $token = Get-AzureOAuthToken -TenantId $tenantId -ClientId $clientId `
             -ClientSecret $clientSecret -CachePath $cacheDir -TimeoutSeconds $Config.timeout_seconds
 
         if (-not $token -or -not $token.access_token) {
@@ -518,7 +521,7 @@ function Send-EmailNotification {
         $subject = "IPSC Kurs Watcher - Neue Kurse und Verf" + [char]252 + "gbarkeits" + [char]228 + "nderungen"
 
         # Send email with retry logic
-        $sent = _SendMailViaGraph -AccessToken $token.access_token -UserId $Config.user_id `
+        $sent = _SendMailViaGraph -AccessToken $token.access_token -UserId $userId `
             -Recipients $Config.recipients -Subject $subject -HtmlBody $htmlBody `
             -TimeoutSeconds $Config.timeout_seconds -MaxRetries $Config.retry_attempts
 

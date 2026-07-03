@@ -25,10 +25,10 @@ function _GetAlertEmoji {
     param([string]$AlertReason)
 
     switch ($AlertReason) {
-        'NEW' { return '🟢' }
-        'AVAILABILITY_REDUCED' { return '🟡' }
-        'SOLD_OUT' { return '🔴' }
-        default { return '⚪' }
+        'NEW' { return '[NEW]' }
+        'AVAILABILITY_REDUCED' { return '[REDUCED]' }
+        'SOLD_OUT' { return '[SOLD_OUT]' }
+        default { return '[ALERT]' }
     }
 }
 
