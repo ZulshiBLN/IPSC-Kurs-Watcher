@@ -5,8 +5,8 @@
 Remove IPSC Kurs Monitor app identity from Windows registry.
 
 .DESCRIPTION
-Removes registry entries created by Set-AppIdentity.ps1.
-Restores Toast notifications to display default PowerShell app name.
+Removes the registry entries created by Set-AppIdentity.ps1.
+Toast notifications will revert to showing "Microsoft.PowerShell..." as the app name.
 
 No administrator privileges required.
 
@@ -14,26 +14,19 @@ No administrator privileges required.
 .\Remove-AppIdentity.ps1
 #>
 
-$appName = "IPSC Kurs Monitor"
-$regPath = "HKCU:\Software\Classes\CLSID\{12345678-1234-1234-1234-123456789012}"
+. "$PSScriptRoot\modules\SetupFunctions.ps1"
 
-Write-Host "Removing '$appName' app identity..."
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "IPSC Kurs Monitor - App Identity Removal" -ForegroundColor Cyan
+Write-Host "========================================`n" -ForegroundColor Cyan
 
-try {
-    # Check if registry entry exists
-    if (Test-Path $regPath) {
-        # Remove registry entry
-        Remove-Item -Path $regPath -Recurse -Force
-        Write-Host "[OK] '$appName' app identity removed successfully" -ForegroundColor Green
-    }
-    else {
-        Write-Host "[INFO] App identity not found in registry (already removed)" -ForegroundColor Cyan
-    }
-}
-catch {
-    Write-Host "[ERROR] Failed to remove app identity: $_" -ForegroundColor Red
-    exit 1
-}
+$success = Invoke-RemoveAppIdentity
 
 Write-Host ""
-Write-Host "Removal complete. Toast notifications will revert to default PowerShell app name." -ForegroundColor Green
+if ($success) {
+    Write-Host "Removal complete. Toast notifications will revert to default app name." -ForegroundColor Green
+    exit 0
+}
+else {
+    exit 1
+}

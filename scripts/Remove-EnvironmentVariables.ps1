@@ -2,23 +2,23 @@
 
 <#
 .SYNOPSIS
-Remove IPSC Kurs Watcher environment variables from Windows.
+Remove IPSC Kurs Watcher environment variables.
 
 .DESCRIPTION
-Removes environment variables set by Set-EnvironmentVariables.ps1:
+Removes environment variables configured by Set-EnvironmentVariables.ps1:
 - IPSC_AZURE_TENANT_ID
 - IPSC_AZURE_CLIENT_ID
 - IPSC_AZURE_USER_ID
 - IPSC_CREDENTIAL_STORE_PATH
 - IPSC_DISCORD_WEBHOOKS
 
-Variables are removed from User level environment only.
+Stored credentials are NOT affected.
 
 .EXAMPLE
 .\Remove-EnvironmentVariables.ps1
 #>
 
-$ErrorActionPreference = "Stop"
+. "$PSScriptRoot\modules\SetupFunctions.ps1"
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "Remove Environment Variables" -ForegroundColor Cyan
@@ -27,46 +27,21 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 Write-Host "This script removes IPSC Kurs Watcher environment variables." -ForegroundColor Yellow
 Write-Host "Your stored credentials will NOT be affected.`n" -ForegroundColor Yellow
 
-# Confirm before removing
 $confirm = Read-Host "Are you sure you want to remove environment variables? (yes/no)"
 if ($confirm -ne "yes") {
     Write-Host "[INFO] Operation cancelled" -ForegroundColor Gray
     exit 0
 }
 
-Write-Host "`n=== Removing Environment Variables ===" -ForegroundColor Green
+$success = Invoke-RemoveEnvironmentVariables
 
-$variables = @(
-    "IPSC_AZURE_TENANT_ID",
-    "IPSC_AZURE_CLIENT_ID",
-    "IPSC_AZURE_USER_ID",
-    "IPSC_CREDENTIAL_STORE_PATH",
-    "IPSC_DISCORD_WEBHOOKS"
-)
-
-try {
-    foreach ($var in $variables) {
-        $value = [System.Environment]::GetEnvironmentVariable($var, [System.EnvironmentVariableTarget]::User)
-        if ($value) {
-            [System.Environment]::SetEnvironmentVariable($var, $null, [System.EnvironmentVariableTarget]::User)
-            Write-Host "[OK] $var removed" -ForegroundColor Green
-        }
-        else {
-            Write-Host "[INFO] $var not set (skipped)" -ForegroundColor Gray
-        }
-    }
+Write-Host ""
+if ($success) {
+    Write-Host "Note: You may need to restart PowerShell for changes to take effect." -ForegroundColor Yellow
+    Write-Host "Your encrypted credentials are still stored at:" -ForegroundColor Yellow
+    Write-Host "`$env:APPDATA\IPSC-Kurs-Watcher\credentials\IPSC-Kurs-Watcher-Secret.bin`n" -ForegroundColor Gray
+    exit 0
 }
-catch {
-    Write-Host "[ERROR] Failed to remove environment variables: $_" -ForegroundColor Red
+else {
     exit 1
 }
-
-Write-Host "`n========================================" -ForegroundColor Green
-Write-Host "[OK] Environment variables removed successfully!" -ForegroundColor Green
-Write-Host "========================================`n" -ForegroundColor Green
-
-Write-Host "Note: You may need to restart PowerShell for changes to take effect." -ForegroundColor Yellow
-Write-Host "Your encrypted credentials are still stored at: " -ForegroundColor Yellow
-Write-Host "`$env:APPDATA\IPSC-Kurs-Watcher\credentials\IPSC-Kurs-Watcher-Secret.bin`n" -ForegroundColor Gray
-
-exit 0

@@ -1,8 +1,23 @@
+#Requires -Version 5.1
+
+<#
+.SYNOPSIS
+Configure Azure AD OAuth2 credentials for IPSC Kurs Watcher.
+
+.DESCRIPTION
+Sets up OAuth2 authentication with Azure AD and Microsoft Graph API.
+Stores Client Secret securely using DPAPI encryption.
+
+Credentials are tested before storage.
+
+.EXAMPLE
+.\Set-AzureCredentials.ps1
+#>
+
 Add-Type -AssemblyName System.Security
 Add-Type -AssemblyName System.Web
 
-$ConfigPath = "config/config.json"
-$CredentialStorePath = "$env:APPDATA\IPSC-Kurs-Watcher\credentials"
+. "$PSScriptRoot\modules\SetupFunctions.ps1"
 
 $ErrorActionPreference = "Stop"
 
@@ -26,16 +41,10 @@ function Write-Error-Custom {
 function _TestAzureConnection {
     param([string]$TenantId, [string]$ClientId, [string]$ClientSecret)
 
-    Write-Host "[DEBUG] TenantId length: $($TenantId.Length)" -ForegroundColor Gray
-    Write-Host "[DEBUG] ClientId length: $($ClientId.Length)" -ForegroundColor Gray
-    Write-Host "[DEBUG] ClientSecret length: $($ClientSecret.Length)" -ForegroundColor Gray
-
     try {
         $tokenUri = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
-        Write-Host "[DEBUG] Token URI: $tokenUri" -ForegroundColor Gray
 
         $body = "client_id=$([System.Web.HttpUtility]::UrlEncode($ClientId))&client_secret=$([System.Web.HttpUtility]::UrlEncode($ClientSecret))&scope=$([System.Web.HttpUtility]::UrlEncode('https://graph.microsoft.com/.default'))&grant_type=client_credentials"
-        Write-Host "[DEBUG] Request body (first 100 chars): $($body.Substring(0, [Math]::Min(100, $body.Length)))..." -ForegroundColor Gray
 
         $response = Invoke-WebRequest -Uri $tokenUri -Method POST -Body $body -ContentType "application/x-www-form-urlencoded" -TimeoutSec 10 -ErrorAction Stop -UseBasicParsing
         $token = $response.Content | ConvertFrom-Json
@@ -47,28 +56,19 @@ function _TestAzureConnection {
     catch {
         $errorMsg = $_.Exception.Message
         $errorResponse = $_.Exception.Response.StatusCode
-        Write-Host "[DEBUG] HTTP Status Code: $errorResponse" -ForegroundColor Gray
-        Write-Host "[DEBUG] Error Message: $errorMsg" -ForegroundColor Gray
-
-        if ($errorMsg -match "401|Unauthorized" -or $errorResponse -eq "Unauthorized") { $errorMsg = "Invalid Client ID, Client Secret, or Tenant ID" }
-        elseif ($errorMsg -match "403|Forbidden") { $errorMsg = "Permission denied. Check Tenant ID and credentials." }
+        if ($errorMsg -match "401|Unauthorized" -or $errorResponse -eq "Unauthorized") {
+            $errorMsg = "Invalid Client ID, Client Secret, or Tenant ID"
+        }
+        elseif ($errorMsg -match "403|Forbidden") {
+            $errorMsg = "Permission denied. Check Tenant ID and credentials."
+        }
         return @{ success = $false; message = "OAuth2 failed: $errorMsg" }
     }
 }
 
 Write-Header "Azure AD OAuth2 Configuration for IPSC Kurs Watcher"
 
-if (-not [System.IO.Path]::IsPathRooted($ConfigPath)) {
-    $scriptRoot = Split-Path $MyInvocation.MyCommand.Path
-    $ConfigPath = Join-Path (Split-Path $scriptRoot) $ConfigPath
-}
-
-if (-not (Test-Path $ConfigPath)) {
-    Write-Error-Custom "Config file not found: $ConfigPath"
-    exit 1
-}
-
-Write-Success "Config found: $ConfigPath"
+$CredentialStorePath = "$env:APPDATA\IPSC-Kurs-Watcher\credentials"
 
 Write-Header "Enter Azure Credentials"
 
@@ -136,7 +136,6 @@ else {
 Write-Header "Setting Environment Variables"
 
 try {
-    # Set environment variables for this session
     $env:IPSC_AZURE_TENANT_ID = $tenantId
     $env:IPSC_AZURE_CLIENT_ID = $clientId
     $env:IPSC_CREDENTIAL_STORE_PATH = $CredentialStorePath
@@ -160,7 +159,6 @@ Write-Header "Configuration Verification"
 Write-Host "Tenant ID:        $tenantId" -ForegroundColor Gray
 Write-Host "Client ID:        $clientId" -ForegroundColor Gray
 Write-Host "Client Secret:    [STORED SECURELY]" -ForegroundColor Gray
-Write-Host "Config Path:      $ConfigPath" -ForegroundColor Gray
 Write-Host "Credential Store: $credentialFile" -ForegroundColor Gray
 Write-Host ""
 

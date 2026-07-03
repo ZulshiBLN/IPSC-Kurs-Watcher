@@ -6,9 +6,9 @@ Automated course monitoring and availability tracking for shooting-store.ch IPSC
 
 ## Status
 
-**Version:** v0.4.0  
-**Status:** [DEVELOPMENT] Full test coverage (31/31 integration tests passing), state merge logic fixed, ready for production deployment  
-**Last Updated:** 2026-07-03
+**Version:** v0.5.0  
+**Status:** [DEVELOPMENT] Module-based architecture (Setup/Uninstall orchestrators), full test coverage (31/31 integration tests passing), ready for production deployment  
+**Last Updated:** 2026-07-04
 
 **What Works (v0.1.1):**
 - ✅ Course monitoring from shooting-store.ch
