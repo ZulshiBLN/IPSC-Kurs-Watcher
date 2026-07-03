@@ -19,7 +19,32 @@ function Save-State { param([hashtable]$State, [string]$StateFile = 'data/state.
     if ($stateDir -and -not (Test-Path $stateDir)) { New-Item -ItemType Directory -Path $stateDir -Force | Out-Null }
     try {
         $State.last_poll = [datetime]::UtcNow.ToString('o')
-        $State | ConvertTo-Json -Depth 10 -Compress | Set-Content $StateFile -Encoding UTF8 -ErrorAction Stop
+        $json = @("{")
+        $json += '  "version": ' + ($State.version | ConvertTo-Json) + ','
+        $json += '  "last_poll": ' + ($State.last_poll | ConvertTo-Json) + ','
+        $json += '  "last_notified": ['
+
+        if ($State.last_notified -and $State.last_notified.Count -gt 0) {
+            foreach ($i in 0..($State.last_notified.Count - 1)) {
+                $course = $State.last_notified[$i]
+                $json += '    {'
+                $json += '      "id": ' + ($course.id | ConvertTo-Json) + ','
+                $json += '      "name": ' + ($course.name | ConvertTo-Json) + ','
+                $json += '      "date": ' + ($course.date | ConvertTo-Json) + ','
+                $json += '      "time": ' + ($course.time | ConvertTo-Json) + ','
+                $json += '      "availability": ' + ($course.availability | ConvertTo-Json) + ','
+                $json += '      "price": ' + ($course.price | ConvertTo-Json) + ','
+                $json += '      "url": ' + ($course.url | ConvertTo-Json) + ','
+                $json += '      "monitor_id": ' + ($course.monitor_id | ConvertTo-Json) + ','
+                $json += '      "notified_at": ' + ($course.notified_at | ConvertTo-Json)
+                if ($i -lt $State.last_notified.Count - 1) { $json += '    },' }
+                else { $json += '    }' }
+            }
+        }
+        $json += '  ]'
+        $json += "}"
+
+        $json -join "`n" | Set-Content $StateFile -Encoding UTF8 -ErrorAction Stop
     }
     catch { Write-Log -Level ERROR -Message "Failed to save state" -Context @{ file = $StateFile } -Exception $_ }
 }
