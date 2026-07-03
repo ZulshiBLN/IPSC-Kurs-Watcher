@@ -2,24 +2,26 @@
 #Requires -Modules Pester
 
 BeforeAll {
-    # Load all modules
+    # Load all modules using absolute path
+    $repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
     $modulePaths = @(
-        '../../../src/core/Helpers.ps1'
-        '../../../src/core/Logging.ps1'
-        '../../../src/core/Config.ps1'
-        '../../../src/core/State.ps1'
-        '../../../src/monitors/MonitorBase.ps1'
-        '../../../src/monitors/CourseMonitor.ps1'
-        '../../../src/monitors/MonitorFactory.ps1'
-        '../../../src/filters/FilterByType.ps1'
-        '../../../src/filters/FilterByExclusion.ps1'
-        '../../../src/filters/FilterPipeline.ps1'
+        "$repoRoot/src/core/Helpers.ps1"
+        "$repoRoot/src/core/Logging.ps1"
+        "$repoRoot/src/core/Config.ps1"
+        "$repoRoot/src/core/State.ps1"
+        "$repoRoot/src/monitors/MonitorBase.ps1"
+        "$repoRoot/src/monitors/CourseMonitor.ps1"
+        "$repoRoot/src/monitors/MonitorFactory.ps1"
+        "$repoRoot/src/filters/FilterByType.ps1"
+        "$repoRoot/src/filters/FilterByExclusion.ps1"
+        "$repoRoot/src/filters/FilterPipeline.ps1"
     )
 
     foreach ($path in $modulePaths) {
-        $fullPath = Join-Path $PSScriptRoot $path
-        if (Test-Path $fullPath) {
-            . $fullPath
+        if (Test-Path $path) {
+            . $path
+        } else {
+            Write-Warning "Module not found: $path"
         }
     }
 

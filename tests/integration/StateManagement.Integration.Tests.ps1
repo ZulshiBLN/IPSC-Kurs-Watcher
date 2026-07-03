@@ -2,17 +2,19 @@
 #Requires -Modules Pester
 
 BeforeAll {
-    # Load core modules
+    # Load core modules using absolute path
+    $repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
     $modulePaths = @(
-        '../../../src/core/Helpers.ps1'
-        '../../../src/core/Logging.ps1'
-        '../../../src/core/State.ps1'
+        "$repoRoot/src/core/Helpers.ps1"
+        "$repoRoot/src/core/Logging.ps1"
+        "$repoRoot/src/core/State.ps1"
     )
 
     foreach ($path in $modulePaths) {
-        $fullPath = Join-Path $PSScriptRoot $path
-        if (Test-Path $fullPath) {
-            . $fullPath
+        if (Test-Path $path) {
+            . $path
+        } else {
+            Write-Warning "Module not found: $path"
         }
     }
 
