@@ -34,7 +34,7 @@ function Get-State {
     if (Test-Path $StateFile) {
         try {
             $stateJson = Get-Content $StateFile -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
-            $trackedCourses = if ($stateJson.last_notified) { @($stateJson.last_notified) } else { @() }
+            $trackedCourses = if ($null -ne $stateJson.last_notified) { @($stateJson.last_notified) } else { @() }
             return @{ version = $stateJson.version; last_poll = $stateJson.last_poll; last_notified = $trackedCourses }
         }
         catch { return @{ version = 1; last_poll = [datetime]::UtcNow.ToString('o'); last_notified = @() } }
@@ -266,7 +266,7 @@ function Get-NewCourse {
 
     Write-Log -Level WARN -Message "Get-NewCourses is deprecated, use Merge-CourseState instead"
 
-    $trackedCourses = if ($PreviousCourses) { $PreviousCourses } else { @() }
+    $trackedCourses = if ($null -ne $PreviousCourses) { $PreviousCourses } else { @() }
     $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $trackedCourses
     return $mergeResult.alerts.new + $mergeResult.alerts.reduced
 }
