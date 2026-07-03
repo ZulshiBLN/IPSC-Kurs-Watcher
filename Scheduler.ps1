@@ -153,24 +153,18 @@ function Invoke-MonitoringCycle {
             Write-Log -Level INFO -Message "Courses fetched" `
                 -Context @{ monitor = $monitorConfig.id; count = $currentCourses.Count }
 
-            # Apply filters
-            $filteredCourses = Invoke-FilterPipeline -Courses $currentCourses -FilterConfig $config.filters
-
-            Write-Log -Level DEBUG -Message "Courses filtered" `
-                -Context @{ before = $currentCourses.Count; after = $filteredCourses.Count }
-
-            # Identify new courses
-            $newCourses = Get-NewCourses -CurrentCourses $filteredCourses -PreviousCourses $state.last_notified
+            # Identify new/changed courses (compare with previous state)
+            $newCourses = Get-NewCourses -CurrentCourses $currentCourses -PreviousCourses $state.last_notified
 
             if ($newCourses.Count -gt 0) {
-                Write-Log -Level WARN -Message "New courses detected" `
-                    -Context @{ monitor = $monitorConfig.id; count = $newCourses.Count }
+                Write-Log -Level WARN -Message "New or changed courses detected" `
+                    -Context @{ monitor = $monitorConfig.id; count = $newCourses.Count; total_tracked = $currentCourses.Count }
 
                 $allNewCourses += $newCourses
             }
 
             # Update state with ALL current courses (for next comparison)
-            $state = Update-StateWithCourses -State $state -Courses $filteredCourses
+            $state = Update-StateWithCourses -State $state -Courses $currentCourses
         }
         catch {
             $err = $_
