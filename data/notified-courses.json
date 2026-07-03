@@ -2,68 +2,84 @@
     "notified_courses":  [
                              {
                                  "id":  "IPSC Basic 2.0 Course|05.09.2026|09:30-13:00",
-                                 "name":  "IPSC Basic 2.0 Course",
-                                 "fetched_at":  "2026-07-03T12:36:23.9975506Z",
+                                 "time":  "09:30-13:00",
+                                 "availability":  2,
+                                 "url":  "https://www.shooting-store.ch/de/produkt/copy-ipsc-basic-20-course-08082026-0930-1300",
                                  "price":  "CHF 280.00",
-                                 "date":  "05.09.2026",
-                                 "time":  "09:30-13:00"
+                                 "name":  "IPSC Basic 2.0 Course",
+                                 "fetched_at":  "2026-07-03T12:43:17.3097636Z",
+                                 "date":  "05.09.2026"
                              },
                              {
                                  "id":  "IPSC Basic 2.0 Course|08.08.2026|09:30-13:00",
-                                 "name":  "IPSC Basic 2.0 Course",
-                                 "fetched_at":  "2026-07-03T12:36:23.9975506Z",
+                                 "time":  "09:30-13:00",
+                                 "availability":  3,
+                                 "url":  "https://www.shooting-store.ch/de/produkt/ipsc-basic-2-course-20122025-1630-2000",
                                  "price":  "CHF 280.00",
-                                 "date":  "08.08.2026",
-                                 "time":  "09:30-13:00"
+                                 "name":  "IPSC Basic 2.0 Course",
+                                 "fetched_at":  "2026-07-03T12:43:17.4986681Z",
+                                 "date":  "08.08.2026"
                              },
                              {
                                  "id":  "IPSC Movement Kurs|12.08.2026|20:00-22:00",
-                                 "name":  "IPSC Movement Kurs",
-                                 "fetched_at":  "2026-07-03T12:36:23.9975506Z",
+                                 "time":  "20:00-22:00",
+                                 "availability":  4,
+                                 "url":  "https://www.shooting-store.ch/de/produkt/ipsc-movement-kurs-08102025-2000-2200",
                                  "price":  "CHF 180.00",
-                                 "date":  "12.08.2026",
-                                 "time":  "20:00-22:00"
+                                 "name":  "IPSC Movement Kurs",
+                                 "fetched_at":  "2026-07-03T12:43:17.6682152Z",
+                                 "date":  "12.08.2026"
                              },
                              {
                                  "id":  "IPSC Stages|06.09.2026|08:00-11:00",
-                                 "name":  "IPSC Stages",
-                                 "fetched_at":  "2026-07-03T12:36:23.9990752Z",
+                                 "time":  "08:00-11:00",
+                                 "availability":  4,
+                                 "url":  "https://www.shooting-store.ch/de/produkt/ipsc-training-27032022-0800-1100",
                                  "price":  "CHF 260.00",
-                                 "date":  "06.09.2026",
-                                 "time":  "08:00-11:00"
+                                 "name":  "IPSC Stages",
+                                 "fetched_at":  "2026-07-03T12:43:17.8637883Z",
+                                 "date":  "06.09.2026"
                              },
                              {
                                  "id":  "IPSC Moving Targets Kurs|16.07.2026|20:00-22:00",
-                                 "name":  "IPSC Moving Targets Kurs",
-                                 "fetched_at":  "2026-07-03T12:36:23.9990752Z",
+                                 "time":  "20:00-22:00",
+                                 "availability":  5,
+                                 "url":  "https://www.shooting-store.ch/de/produkt/ipsc-moving-targets-kurs-21022026-0800-1100",
                                  "price":  "CHF 220.00",
-                                 "date":  "16.07.2026",
-                                 "time":  "20:00-22:00"
+                                 "name":  "IPSC Moving Targets Kurs",
+                                 "fetched_at":  "2026-07-03T12:43:18.0364921Z",
+                                 "date":  "16.07.2026"
                              },
                              {
                                  "id":  "IPSC Stages|12.07.2026|08:00-11:00",
-                                 "name":  "IPSC Stages",
-                                 "fetched_at":  "2026-07-03T12:36:23.9990752Z",
+                                 "time":  "08:00-11:00",
+                                 "availability":  5,
+                                 "url":  "https://www.shooting-store.ch/de/produkt/ipsc-training-20022022-0800-1100",
                                  "price":  "CHF 260.00",
-                                 "date":  "12.07.2026",
-                                 "time":  "08:00-11:00"
+                                 "name":  "IPSC Stages",
+                                 "fetched_at":  "2026-07-03T12:43:18.2403522Z",
+                                 "date":  "12.07.2026"
                              },
                              {
                                  "id":  "IPSC Steel Target Kurs|23.09.2026|20:00-22:00",
-                                 "name":  "IPSC Steel Target Kurs",
-                                 "fetched_at":  "2026-07-03T12:36:23.9990752Z",
+                                 "time":  "20:00-22:00",
+                                 "availability":  5,
+                                 "url":  "https://www.shooting-store.ch/de/produkt/ipsc-steel-target-kurs-29102025-2000-2200",
                                  "price":  "CHF 220.00",
-                                 "date":  "23.09.2026",
-                                 "time":  "20:00-22:00"
+                                 "name":  "IPSC Steel Target Kurs",
+                                 "fetched_at":  "2026-07-03T12:43:18.4288656Z",
+                                 "date":  "23.09.2026"
                              },
                              {
                                  "id":  "IPSC Stages|09.08.2026|08:00-11:00",
-                                 "name":  "IPSC Stages",
-                                 "fetched_at":  "2026-07-03T12:36:23.9990752Z",
+                                 "time":  "08:00-11:00",
+                                 "availability":  6,
+                                 "url":  "https://www.shooting-store.ch/de/produkt/ipsc-training-19122021-0800-1100",
                                  "price":  "CHF 260.00",
-                                 "date":  "09.08.2026",
-                                 "time":  "08:00-11:00"
+                                 "name":  "IPSC Stages",
+                                 "fetched_at":  "2026-07-03T12:43:18.6200777Z",
+                                 "date":  "09.08.2026"
                              }
                          ],
-    "last_check":  "2026-07-03T12:36:24.0268608Z"
+    "last_check":  "2026-07-03T12:43:18.6302862Z"
 }
