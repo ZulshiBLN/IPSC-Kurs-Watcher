@@ -50,7 +50,9 @@ class CourseMonitor : MonitorBase {
                                 $availability = [int]$Matches[1]
                             }
                         }
-                        catch { }
+                        catch {
+                            Write-Log -Level WARN -Message "Failed to fetch availability details" -Context @{ url = $detailUrl } -Exception $_
+                        }
                     }
                     
                     $courses += @{

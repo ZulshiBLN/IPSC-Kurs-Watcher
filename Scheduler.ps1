@@ -154,7 +154,7 @@ function Invoke-MonitoringCycle {
                 -Context @{ monitor = $monitorConfig.id; count = $currentCourses.Count }
 
             # Merge current courses with state (detects changes)
-            $mergeResult = Update-StateWithCourses -State $state -CurrentCourses $currentCourses
+            $mergeResult = Update-StateWithCourse -State $state -CurrentCourses $currentCourses
             $state = $mergeResult.state
             $alerts = $mergeResult.alerts
 

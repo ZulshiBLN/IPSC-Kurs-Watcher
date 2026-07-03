@@ -152,7 +152,7 @@ function Merge-CourseState {
     }
 }
 
-function Update-StateWithCourses {
+function Update-StateWithCourse {
     <#
     .SYNOPSIS
     Merges current courses into state, returns both updated state and alerts.
@@ -170,11 +170,16 @@ function Update-StateWithCourses {
     .OUTPUTS
     Hashtable with 'state' and 'alerts'
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param([hashtable]$State, [object[]]$CurrentCourses)
 
-    $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $State.last_notified
-
-    $State.last_notified = $mergeResult.updated_state
+    if ($PSCmdlet.ShouldProcess("state.last_notified", "Update course state")) {
+        $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $State.last_notified
+        $State.last_notified = $mergeResult.updated_state
+    }
+    else {
+        $mergeResult = @{ alerts = @{ new = @(); reduced = @(); sold_out = @() }; updated_state = $State.last_notified }
+    }
 
     return @{
         state = $State
@@ -182,7 +187,7 @@ function Update-StateWithCourses {
     }
 }
 
-function Get-NewCourses {
+function Get-NewCourse {
     <#
     .SYNOPSIS
     DEPRECATED: Use Merge-CourseState instead.

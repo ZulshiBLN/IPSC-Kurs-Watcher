@@ -1,6 +1,6 @@
 ﻿#Requires -Version 5.1
 
-function Filter-ByExclusion { param([object[]]$Courses, [string[]]$ExcludePatterns)
+function Get-FilteredCoursesByExclusion { param([object[]]$Courses, [string[]]$ExcludePatterns)
     if (-not $Courses -or -not $ExcludePatterns) { return $Courses }
     $filtered = @()
     foreach ($course in $Courses) {

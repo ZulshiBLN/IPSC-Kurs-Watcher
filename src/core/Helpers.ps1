@@ -8,15 +8,19 @@ Common helper utilities for IPSC Kurs Watcher.
 function ConvertTo-SafeJson {
     [CmdletBinding()]
     param([Parameter(ValueFromPipeline)][object]$InputObject, [int]$Depth = 10)
-    try { $InputObject | ConvertTo-Json -Depth $Depth -ErrorAction Stop }
-    catch { Write-Error "JSON conversion failed: $_"; $null }
+    process {
+        try { $InputObject | ConvertTo-Json -Depth $Depth -ErrorAction Stop }
+        catch { Write-Error "JSON conversion failed: $_"; $null }
+    }
 }
 
 function ConvertFrom-SafeJson {
     [CmdletBinding()]
     param([Parameter(ValueFromPipeline)][string]$JsonString)
-    try { $JsonString | ConvertFrom-Json -ErrorAction Stop }
-    catch { Write-Error "JSON parse error: $_"; $null }
+    process {
+        try { $JsonString | ConvertFrom-Json -ErrorAction Stop }
+        catch { Write-Error "JSON parse error: $_"; $null }
+    }
 }
 
 function Test-FilePath { [CmdletBinding()] param([string]$Path)
@@ -36,7 +40,7 @@ function Invoke-WithRetry { [CmdletBinding()] param([scriptblock]$ScriptBlock, [
     throw $lastError
 }
 
-function Mask-SensitiveData { [CmdletBinding()] param([string]$InputString)
+function Protect-SensitiveData { [CmdletBinding()] param([string]$InputString)
     if (-not $InputString) { return $InputString }
     $masked = $InputString
     $masked = $masked -replace '(password[^=]*=")[^"]*"', '$1***MASKED***"'

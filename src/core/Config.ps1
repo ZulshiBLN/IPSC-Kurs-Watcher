@@ -1,6 +1,6 @@
 ﻿#Requires -Version 5.1
 
-function Get-Config { param([string]$ConfigPath = 'config/config.json', [string]$SchemaPath = 'config/config.schema.json')
+function Get-Config { param([string]$ConfigPath = 'config/config.json')
     if (-not (Test-Path $ConfigPath)) { throw "Config file not found: $ConfigPath" }
     try {
         $configJson = Get-Content $ConfigPath -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
@@ -13,7 +13,7 @@ function Get-Config { param([string]$ConfigPath = 'config/config.json', [string]
     }
 }
 
-function Validate-MonitorConfig { param([hashtable]$MonitorConfig)
+function Test-MonitorConfig { param([hashtable]$MonitorConfig)
     if (-not $MonitorConfig.id) { throw "Monitor must have 'id'" }
     if (-not $MonitorConfig.provider) { throw "Monitor must have 'provider'" }
     if (-not $MonitorConfig.url) { throw "Monitor must have 'url'" }

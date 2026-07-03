@@ -25,7 +25,7 @@ function Initialize-Logging {
         New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
     }
 
-    Remove-OldLogs -LogDir $LogDir -RetentionDays $RetentionDays
+    Remove-OldLog -LogDir $LogDir -RetentionDays $RetentionDays
 }
 
 function Write-Log {
@@ -49,8 +49,8 @@ function Write-Log {
         if ($Exception.InvocationInfo) { $logMsg += " (Line: $($Exception.InvocationInfo.ScriptLineNumber))" }
     }
 
-    if ($color) { Write-Host $logMsg -ForegroundColor $color }
-    else { Write-Host $logMsg }
+    if ($color) { Write-Information $logMsg -InformationAction Continue }
+    else { Write-Output $logMsg }
 
     # Write to file
     if ($script:LoggingConfig.Format -eq 'json') {
@@ -90,11 +90,12 @@ function Write-LogToFile-JSON {
         Add-Content -Path $logFile -Value $json -Encoding UTF8 -ErrorAction Stop
     }
     catch {
-        Write-Host "Failed to write log: $_" -ForegroundColor Red
+        Write-Error "Failed to write log: $_"
     }
 }
 
-function Remove-OldLogs {
+function Remove-OldLog {
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [string]$LogDir,
         [int]$RetentionDays
@@ -105,5 +106,5 @@ function Remove-OldLogs {
     $cutoffDate = (Get-Date).AddDays(-$RetentionDays)
     Get-ChildItem $LogDir -Filter "watcher-*.log" -ErrorAction SilentlyContinue |
         Where-Object { $_.LastWriteTime -lt $cutoffDate } |
-        Remove-Item -Force -ErrorAction SilentlyContinue
+        Remove-Item -Force -ErrorAction SilentlyContinue -WhatIf:$WhatIfPreference -Confirm:$ConfirmPreference
 }

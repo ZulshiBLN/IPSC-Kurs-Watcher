@@ -5,7 +5,7 @@ function Test-CourseType { param([string]$CourseName, [string[]]$Patterns)
     return $false
 }
 
-function Filter-ByType { param([object[]]$Courses, [object[]]$TypeFilters)
+function Get-FilteredCoursesByType { param([object[]]$Courses, [object[]]$TypeFilters)
     if (-not $Courses) { return @() }
     $enabledFilters = @($TypeFilters | Where-Object { $_.enabled })
     if ($enabledFilters.Count -eq 0) { return $Courses }
