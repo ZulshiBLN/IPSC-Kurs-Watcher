@@ -31,7 +31,7 @@ $ErrorActionPreference = 'Continue'
 
 # Setup paths
 $ScriptRoot = Split-Path $MyInvocation.MyCommand.Path
-$MonitorPath = Join-Path $ScriptRoot "src/monitors/BasicCourseMonitor.ps1"
+$MonitorPath = Join-Path $ScriptRoot "src/monitors/CourseMonitor.ps1"
 $StateFile = Join-Path $ScriptRoot "data/notified-courses.json"
 $LogDir = Join-Path $ScriptRoot "data/logs"
 
@@ -60,7 +60,7 @@ function Write-LogEntry {
 # Load monitor module
 try {
     . $MonitorPath
-    Write-LogEntry "INFO" "Loaded BasicCourseMonitor module"
+    Write-LogEntry "INFO" "Loaded CourseMonitor module"
 } catch {
     Write-LogEntry "ERROR" "Failed to load monitor module: $_"
     exit 1
@@ -115,7 +115,7 @@ function Invoke-MonitoringLoop {
 
         try {
             # Run the monitor
-            $result = Invoke-BasicCourseMonitor -Config $config -StateFile $StateFile
+            $result = Invoke-CourseMonitor -Config $config -StateFile $StateFile
 
             # Log results
             Write-LogEntry "INFO" "Total courses: $($result.total_current)"

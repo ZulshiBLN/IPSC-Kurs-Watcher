@@ -81,10 +81,10 @@ On each run:
    - Add to `notified_courses`
 
 ### Step 4: Implementation Files
-- `src/monitors/BasicCourseMonitor.ps1` - Core monitor logic
+- `src/monitors/CourseMonitor.ps1` - Core monitor logic
   - `Get-CoursesFromShootingStore()` - Fetches and parses all courses
-  - `Find-NewBasicCourses()` - Identifies new courses
-  - `Invoke-BasicCourseMonitor()` - Main orchestrator
+  - `Find-NewCourses()` - Identifies new courses
+  - `Invoke-CourseMonitor()` - Main orchestrator
 - `BasicCourseWatcher.ps1` - Standalone watcher script
 - `data/notified-courses.json` - State file (auto-created)
 
@@ -173,7 +173,7 @@ Alert: Availability reduced for IPSC Basic 2.0 Course (05.09.2026)
 ### IMMEDIATE (This Turn)
 1. Inspect HTML of https://www.shooting-store.ch/de/kategorie/kurse1
 2. Identify exact CSS/HTML patterns for course name extraction
-3. Create `BasicCourseMonitor.ps1` with working parser
+3. Create `CourseMonitor.ps1` with working parser
 
 ### THEN
 1. Test on actual website
@@ -194,10 +194,10 @@ Alert: Availability reduced for IPSC Basic 2.0 Course (05.09.2026)
 ## Implementation Complete ✅
 
 ### Files Created
-1. **`src/monitors/BasicCourseMonitor.ps1`** - Core monitor logic
-   - `Get-BasicCoursesFromShootingStore()` - Fetches and parses page
-   - `Find-NewBasicCourses()` - Compares against known courses
-   - `Invoke-BasicCourseMonitor()` - Main orchestrator
+1. **`src/monitors/CourseMonitor.ps1`** - Core monitor logic
+   - `Get-CoursesFromShootingStore()` - Fetches and parses page
+   - `Find-NewCourses()` - Compares against known courses
+   - `Invoke-CourseMonitor()` - Main orchestrator
 
 2. **`BasicCourseWatcher.ps1`** - Standalone watcher script
    - Runs monitoring checks periodically (configurable interval)

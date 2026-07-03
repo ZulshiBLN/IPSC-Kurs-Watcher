@@ -152,7 +152,7 @@ function Get-NotifiedCourses {
     )
 
     if (-not (Test-Path $StateFile)) {
-        Write-Verbose "[BasicCourseMonitor] State file not found, initializing: $StateFile"
+        Write-Verbose "[CourseMonitor] State file not found, initializing: $StateFile"
         $initialState = @{
             last_check = ([datetime]::UtcNow).ToString("o")
             notified_courses = @()
@@ -166,7 +166,7 @@ function Get-NotifiedCourses {
         return $state.notified_courses
     }
     catch {
-        Write-Error "[BasicCourseMonitor] Failed to load state file: $_"
+        Write-Error "[CourseMonitor] Failed to load state file: $_"
         return @()
     }
 }
@@ -198,14 +198,14 @@ function Save-NotifiedCourses {
 
     try {
         $state | ConvertTo-Json | Set-Content $StateFile -Encoding UTF8
-        Write-Verbose "[BasicCourseMonitor] Saved $($Courses.Count) courses to state file"
+        Write-Verbose "[CourseMonitor] Saved $($Courses.Count) courses to state file"
     }
     catch {
-        Write-Error "[BasicCourseMonitor] Failed to save state file: $_"
+        Write-Error "[CourseMonitor] Failed to save state file: $_"
     }
 }
 
-function Find-NewBasicCourses {
+function Find-NewCourses {
     <#
     .SYNOPSIS
     Compares current courses against previously notified courses.
@@ -218,7 +218,7 @@ function Find-NewBasicCourses {
     Array of previously notified courses
 
     .EXAMPLE
-    $alerts = Find-NewBasicCourses -CurrentCourses $current -NotifiedCourses $previous
+    $alerts = Find-NewCourses -CurrentCourses $current -NotifiedCourses $previous
     #>
 
     param(
@@ -270,7 +270,7 @@ function Send-BasicCourseNotification {
     )
 
     if ($Courses.Count -eq 0) {
-        Write-Verbose "[BasicCourseMonitor] No new courses to notify"
+        Write-Verbose "[CourseMonitor] No new courses to notify"
         return
     }
 
@@ -302,24 +302,24 @@ https://www.shooting-store.ch/de/kategorie/kurse1
 
     # Email notification
     if ($Config.notifiers.email.enabled) {
-        Write-Verbose "[BasicCourseMonitor] Sending email notification"
+        Write-Verbose "[CourseMonitor] Sending email notification"
         # This would call the email notifier function from config
     }
 
     # Discord notification
     if ($Config.notifiers.discord.enabled) {
-        Write-Verbose "[BasicCourseMonitor] Sending Discord notification"
+        Write-Verbose "[CourseMonitor] Sending Discord notification"
         # This would call the Discord notifier function from config
     }
 
     # Windows Toast notification
     if ($Config.notifiers.windows_toast.enabled) {
-        Write-Verbose "[BasicCourseMonitor] Sending toast notification"
+        Write-Verbose "[CourseMonitor] Sending toast notification"
         # This would call the toast notifier function from config
     }
 }
 
-function Invoke-BasicCourseMonitor {
+function Invoke-CourseMonitor {
     <#
     .SYNOPSIS
     Main entry point for Basic Course monitoring.
@@ -339,7 +339,7 @@ function Invoke-BasicCourseMonitor {
     Path to state file (default: data/notified-basic-courses.json)
 
     .EXAMPLE
-    Invoke-BasicCourseMonitor -Config $config
+    Invoke-CourseMonitor -Config $config
     #>
 
     param(
@@ -361,7 +361,7 @@ function Invoke-BasicCourseMonitor {
     $notifiedCourses = Get-NotifiedCourses -StateFile $StateFile
 
     # Step 3: Find new courses
-    $newCourses = Find-NewBasicCourses -CurrentCourses $currentCourses -NotifiedCourses $notifiedCourses
+    $newCourses = Find-NewCourses -CurrentCourses $currentCourses -NotifiedCourses $notifiedCourses
 
     # Step 4: Send notifications if new courses found
     if ($newCourses.Count -gt 0) {
