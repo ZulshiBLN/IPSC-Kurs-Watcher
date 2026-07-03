@@ -1,96 +1,105 @@
-{
-  "version": 1,
-
-  "monitors": [
-    {
-      "id": "shooting-store",
-      "provider": "shooting-store",
-      "enabled": true,
-      "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
-      "base_url": "https://www.shooting-store.ch",
-      "timeout_seconds": 30,
-      "retry_attempts": 3,
-      "poll_interval_minutes": 30
-    }
-  ],
-
-  "filters": {
-    "course_types": [
-      {
-        "id": "tryout",
-        "name": "Tryout",
-        "patterns": ["Tryout", "Einsteiger-Kurs"],
-        "enabled": true
-      },
-      {
-        "id": "basic",
-        "name": "Basic Level",
-        "patterns": ["Basic", "Anfänger", "Level 1"],
-        "enabled": true
-      },
-      {
-        "id": "basic2",
-        "name": "Basic 2.0",
-        "patterns": ["Basic 2.0", "Basic 2.x", "Level 2"],
-        "enabled": true
-      }
-    ],
-    "exclude_patterns": ["Privatunterricht", "VIP-Kurs", "Geschlossen"],
-    "min_availability": 1
-  },
-
-  "notifiers": {
-    "windows_toast": {
-      "enabled": true,
-      "sound_enabled": true,
-      "group_by_type": true,
-      "max_courses_per_group": 5,
-      "auto_dismiss_seconds": 5,
-      "main_page_url": "https://www.shooting-store.ch/de/kategorie/kurse1"
-    },
-    "email": {
-      "enabled": false,
-      "smtp_host": "smtp.gmail.com",
-      "smtp_port": 587,
-      "use_tls": true,
-      "from_address": "your-email@example.com",
-      "from_display_name": "IPSC Kurs Watcher",
-      "smtp_user": "your-email@gmail.com",
-      "smtp_password": "app-specific-password",
-      "recipients": ["user@example.com"],
-      "retry_attempts": 3,
-      "timeout_seconds": 30,
-      "template_file": "templates/email.html"
-    },
-    "discord": {
-      "enabled": false,
-      "webhook_urls": [
-        "https://discord.com/api/webhooks/..."
-      ],
-      "mention_on_new": true,
-      "mention_user_id": null,
-      "mention_role_id": null,
-      "include_url_buttons": true,
-      "retry_attempts": 3,
-      "timeout_seconds": 30
-    }
-  },
-
-  "state": {
-    "file_path": "data/state.json",
-    "retention_days": 30
-  },
-
-  "logging": {
-    "log_dir": "data/logs",
-    "log_level": "INFO",
-    "retention_days": 30,
-    "format": "json"
-  },
-
-  "error_handling": {
-    "alert_on_repeated_errors": false,
-    "error_threshold": 5,
-    "error_window_minutes": 60
-  }
+﻿{
+    "version":  1,
+    "monitors":  [
+                     {
+                         "id":  "shooting-store",
+                         "provider":  "shooting-store",
+                         "enabled":  true,
+                         "url":  "https://www.shooting-store.ch/de/kategorie/kurse1",
+                         "base_url":  "https://www.shooting-store.ch",
+                         "timeout_seconds":  30,
+                         "retry_attempts":  3,
+                         "poll_interval_minutes":  30
+                     }
+                 ],
+    "filters":  {
+                    "course_types":  [
+                                         {
+                                             "id":  "tryout",
+                                             "name":  "Tryout",
+                                             "patterns":  [
+                                                              "Tryout",
+                                                              "Einsteiger-Kurs"
+                                                          ],
+                                             "enabled":  true
+                                         },
+                                         {
+                                             "id":  "basic",
+                                             "name":  "Basic Level",
+                                             "patterns":  [
+                                                              "Basic",
+                                                              "AnfÃ¤nger",
+                                                              "Level 1"
+                                                          ],
+                                             "enabled":  true
+                                         },
+                                         {
+                                             "id":  "basic2",
+                                             "name":  "Basic 2.0",
+                                             "patterns":  [
+                                                              "Basic 2.0",
+                                                              "Basic 2.x",
+                                                              "Level 2"
+                                                          ],
+                                             "enabled":  true
+                                         }
+                                     ],
+                    "exclude_patterns":  [
+                                             "Privatunterricht",
+                                             "VIP-Kurs",
+                                             "Geschlossen"
+                                         ],
+                    "min_availability":  1
+                },
+    "notifiers":  {
+                      "windows_toast":  {
+                                            "enabled":  true,
+                                            "sound_enabled":  true,
+                                            "group_by_type":  true,
+                                            "max_courses_per_group":  5,
+                                            "auto_dismiss_seconds":  5,
+                                            "main_page_url":  "https://www.shooting-store.ch/de/kategorie/kurse1"
+                                        },
+                      "email":  {
+                                    "client_id":  "526942aa-5ae5-46cd-a83a-74a9706273f9",
+                                    "enabled":  true,
+                                    "retry_attempts":  3,
+                                    "timeout_seconds":  30,
+                                    "credential_store_path":  "C:\\Users\\MichelBrosche\\AppData\\Roaming\\IPSC-Kurs-Watcher\\credentials",
+                                    "recipients":  [
+                                                       "michel@brosche-swiss.ch"
+                                                   ],
+                                    "user_id":  "53f9a104-d93e-4c34-abbb-f408edc03c20",
+                                    "token_cache_path":  "data/.token_cache.json",
+                                    "tenant_id":  "a1220dc4-a49a-4413-a7e3-3f9d29975682",
+                                    "provider":  "graph"
+                                },
+                      "discord":  {
+                                      "enabled":  false,
+                                      "webhook_urls":  [
+                                                           "https://discord.com/api/webhooks/..."
+                                                       ],
+                                      "mention_on_new":  true,
+                                      "mention_user_id":  null,
+                                      "mention_role_id":  null,
+                                      "include_url_buttons":  true,
+                                      "retry_attempts":  3,
+                                      "timeout_seconds":  30
+                                  }
+                  },
+    "state":  {
+                  "file_path":  "data/state.json",
+                  "retention_days":  30
+              },
+    "logging":  {
+                    "log_dir":  "data/logs",
+                    "log_level":  "INFO",
+                    "retention_days":  30,
+                    "format":  "json"
+                },
+    "error_handling":  {
+                           "alert_on_repeated_errors":  false,
+                           "error_threshold":  5,
+                           "error_window_minutes":  60
+                       }
 }

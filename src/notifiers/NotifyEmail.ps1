@@ -14,7 +14,6 @@ Includes token caching, auto-refresh, and retry logic.
 # ============================================================================
 
 $OAUTH_TOKEN_ENDPOINT = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token"
-$GRAPH_API_SEND_MAIL = "https://graph.microsoft.com/v1.0/me/sendMail"
 $GRAPH_API_SCOPE = "https://graph.microsoft.com/.default"
 
 # Load System.Web for HttpUtility
@@ -22,25 +21,36 @@ if (-not ([System.Management.Automation.PSTypeName]'System.Web.HttpUtility').Typ
     Add-Type -AssemblyName System.Web | Out-Null
 }
 
+# Load System.Security for ProtectedData
+if (-not ([System.Management.Automation.PSTypeName]'System.Security.Cryptography.ProtectedData').Type) {
+    Add-Type -AssemblyName System.Security | Out-Null
+}
+
 # ============================================================================
 # PRIVATE FUNCTIONS (Helpers)
 # ============================================================================
 
 function _GetCredentialFromStore {
-    <# .SYNOPSIS Load Client Secret from Windows Credential Manager #>
+    <# .SYNOPSIS Load Client Secret from encrypted credential store #>
     param([string]$StorePath)
 
     try {
-        if (-not (Test-Path $StorePath)) {
+        $credentialFile = Join-Path $StorePath "IPSC-Kurs-Watcher-Secret.bin"
+
+        if (-not (Test-Path $credentialFile)) {
             Write-Log -Level ERROR -Message "Credential file not found" `
-                -Context @{ path = $StorePath }
+                -Context @{ path = $credentialFile }
             return $null
         }
 
-        $cred = Import-Clixml -Path $StorePath
-        $secret = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
-            [System.Runtime.InteropServices.Marshal]::SecureStringToCoTaskMemUnicode($cred.Password)
+        $encryptedBytes = [System.IO.File]::ReadAllBytes($credentialFile)
+        $decryptedBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
+            $encryptedBytes,
+            $null,
+            [System.Security.Cryptography.DataProtectionScope]::LocalMachine
         )
+
+        $secret = [System.Text.Encoding]::UTF8.GetString($decryptedBytes)
         return $secret
     }
     catch {
@@ -118,8 +128,8 @@ function _RefreshOAuthToken {
     $attempt = 0
 
     while ($attempt -lt $MaxRetries) {
+        $attempt++
         try {
-            $attempt++
             $tokenUri = $OAUTH_TOKEN_ENDPOINT -f $TenantId
 
             $body = @{
@@ -130,23 +140,28 @@ function _RefreshOAuthToken {
             }
 
             $response = Invoke-WebRequest -Uri $tokenUri -Method POST -Body $body `
-                -ContentType "application/x-www-form-urlencoded" `
+                -ContentType "application/x-www-form-urlencoded" -UseBasicParsing `
                 -TimeoutSec $TimeoutSeconds -ErrorAction Stop
 
             $token = $response.Content | ConvertFrom-Json
-            $token | Add-Member -NotePropertyName expires_on -NotePropertyValue (
-                [int]([DateTime]::UtcNow - [DateTime]::UnixEpoch).TotalSeconds + $token.expires_in
-            )
+            $unixEpoch = [DateTime]'1970-01-01'
+            $expiresOn = [int]([DateTime]::UtcNow - $unixEpoch).TotalSeconds + $token.expires_in
+            $token | Add-Member -NotePropertyName expires_on -NotePropertyValue $expiresOn -Force
 
             return $token
         }
         catch {
             $waitSeconds = [Math]::Pow(2, $attempt - 1)
+            $errorMsg = $_.Exception.Message
 
             if ($attempt -lt $MaxRetries) {
                 Write-Log -Level WARN -Message "OAuth2 token refresh failed, retrying" `
-                    -Context @{ attempt = $attempt; max_retries = $MaxRetries; wait_seconds = $waitSeconds }
+                    -Context @{ attempt = $attempt; max_retries = $MaxRetries; wait_seconds = $waitSeconds; error = $errorMsg }
                 Start-Sleep -Seconds $waitSeconds
+            }
+            else {
+                Write-Log -Level ERROR -Message "OAuth2 token refresh failed on last attempt" `
+                    -Context @{ attempt = $attempt; error = $errorMsg }
             }
         }
     }
@@ -277,6 +292,7 @@ function _SendMailViaGraph {
     <# .SYNOPSIS Send email via Microsoft Graph API #>
     param(
         [string]$AccessToken,
+        [string]$UserId,
         [string[]]$Recipients,
         [string]$Subject,
         [string]$HtmlBody,
@@ -306,7 +322,6 @@ function _SendMailViaGraph {
                     }
                     toRecipients = $recipientList
                 }
-                saveToSentItems = $false
             }
 
             $headers = @{
@@ -314,8 +329,11 @@ function _SendMailViaGraph {
                 "Content-Type"  = "application/json"
             }
 
-            Invoke-WebRequest -Uri $GRAPH_API_SEND_MAIL -Method POST `
-                -Headers $headers -Body ($payload | ConvertTo-Json -Depth 10) `
+            $jsonBody = $payload | ConvertTo-Json -Depth 10
+
+            $sendMailUri = "https://graph.microsoft.com/v1.0/users/$UserId/sendMail"
+            Invoke-WebRequest -Uri $sendMailUri -Method POST `
+                -Headers $headers -Body $jsonBody -UseBasicParsing `
                 -TimeoutSec $TimeoutSeconds -ErrorAction Stop | Out-Null
 
             Write-Log -Level INFO -Message "Email sent successfully" `
@@ -327,7 +345,7 @@ function _SendMailViaGraph {
 
             if ($attempt -lt $MaxRetries) {
                 Write-Log -Level WARN -Message "Email send failed, retrying" `
-                    -Context @{ attempt = $attempt; max_retries = $MaxRetries; wait_seconds = $waitSeconds }
+                    -Context @{ attempt = $attempt; max_retries = $MaxRetries; wait_seconds = $waitSeconds; error = $_.Exception.Message }
                 Start-Sleep -Seconds $waitSeconds
             }
             else {
@@ -453,15 +471,22 @@ function Send-EmailNotification {
             return
         }
 
-        # Get credentials from Credential Manager
-        $credPath = $Config.credential_store_path
-        if (-not $credPath) {
-            $credPath = "$env:APPDATA\Microsoft\Windows\PowerShell\PSCredentialStore\IPSC-Kurs-Watcher-Secret.xml"
+        # Get credentials from encrypted credential store
+        $credStorePath = if ($Config.credential_store_path) {
+            if ([System.IO.Path]::IsPathRooted($Config.credential_store_path)) {
+                $Config.credential_store_path
+            }
+            else {
+                Join-Path (Get-Location) $Config.credential_store_path
+            }
+        }
+        else {
+            "$env:APPDATA\IPSC-Kurs-Watcher\credentials"
         }
 
-        $clientSecret = _GetCredentialFromStore -CredentialPath $credPath
+        $clientSecret = _GetCredentialFromStore -StorePath $credStorePath
         if (-not $clientSecret) {
-            Write-Log -Level ERROR -Message "Email notifier failed: could not load Client Secret from Credential Manager"
+            Write-Log -Level ERROR -Message "Email notifier failed: could not load Client Secret from credential store"
             return
         }
 
@@ -486,9 +511,9 @@ function Send-EmailNotification {
         $htmlBody = _BuildEmailBody -Alerts $Alerts
 
         # Send email with retry logic
-        $sent = _SendMailViaGraph -AccessToken $token.access_token -Recipients $Config.recipients `
-            -Subject $subject -HtmlBody $htmlBody -TimeoutSeconds $Config.timeout_seconds `
-            -MaxRetries $Config.retry_attempts
+        $sent = _SendMailViaGraph -AccessToken $token.access_token -UserId $Config.user_id `
+            -Recipients $Config.recipients -Subject $subject -HtmlBody $htmlBody `
+            -TimeoutSeconds $Config.timeout_seconds -MaxRetries $Config.retry_attempts
 
         if ($sent) {
             Write-Log -Level INFO -Message "Email notification sent" `

@@ -108,15 +108,15 @@ Write-Success "Config found: $ConfigPath"
 
 Write-Host "`nStep 2: Removing credentials..." -ForegroundColor Yellow
 
-$credentialFilePath = Join-Path $CredentialStorePath "IPSC-Kurs-Watcher-Secret.xml"
+$credentialFile = Join-Path $CredentialStorePath "IPSC-Kurs-Watcher-Secret.bin"
 
 try {
-    if (Test-Path $credentialFilePath) {
-        Remove-Item -Path $credentialFilePath -Force
-        Write-Success "Credential file deleted: $credentialFilePath"
+    if (Test-Path $credentialFile) {
+        Remove-Item -Path $credentialFile -Force
+        Write-Success "Credential file deleted: $credentialFile"
     }
     else {
-        Write-Warning-Custom "Credential file not found (already removed?): $credentialFilePath"
+        Write-Warning-Custom "Credential file not found (already removed?): $credentialFile"
     }
 }
 catch {
