@@ -16,3 +16,14 @@ logs/
 # Temporary
 tmp/
 temp/
+
+# Runtime artifacts & sensitive data
+data/.token_cache.json
+data/*.cache
+data/.token*
+data/state.json
+
+# Credentials (should use environment variables)
+credentials/
+*.bin
+*.key

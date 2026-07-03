@@ -332,8 +332,19 @@ MAJOR.MINOR.PATCH
   - GitHub Releases (manual download)
 
 ### Security & Credentials
-- **Secrets:** Via environment variables or Windows Credential Manager (not in code)
-- **Config:** `config/config.json` (user-editable, no hardcoding)
-- **Logs:** Structured JSON with sensitive data masking
-- **SMTP/Webhook passwords:** DPAPI-encrypted in config (v0.1+)
+
+**Environment Variables (Phase 2):**
+Required for OAuth2 Azure AD authentication:
+- `IPSC_AZURE_TENANT_ID` – Azure AD Tenant ID
+- `IPSC_AZURE_CLIENT_ID` – Azure AD Application ID  
+- `IPSC_AZURE_USER_ID` – Azure AD User ID for sendMail endpoint
+- `IPSC_CREDENTIAL_STORE_PATH` (optional) – Credential store location (default: %APPDATA%\IPSC-Kurs-Watcher\credentials)
+
+Setup: Run `.\scripts\Setup-AzureCredentials.ps1` to set these interactively.
+
+**Other Credentials:**
+- **config.json:** No secrets stored (only non-sensitive fields)
+- **Logs:** Structured JSON with sensitive data masking (passwords masked)
+- **Credential Store:** DPAPI-encrypted at machine level (`%APPDATA%\IPSC-Kurs-Watcher\credentials\IPSC-Kurs-Watcher-Secret.bin`)
+- **Token Cache:** `.gitignore`d, never committed (contains JWT tokens)
 
