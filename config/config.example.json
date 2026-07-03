@@ -59,22 +59,17 @@
     "email": {
       "enabled": false,
       "_comment_enabled": "Set to true to enable email notifications",
-      "smtp_host": "smtp.gmail.com",
-      "smtp_port": 587,
-      "use_tls": true,
-      "from_address": "your-email@gmail.com",
-      "from_display_name": "IPSC Kurs Watcher",
-      "smtp_user": "your-email@gmail.com",
-      "smtp_password": "your-app-password",
-      "_comment_password": "Gmail: Use app-specific password, not account password. Will be encrypted on first run.",
+      "_comment_provider": "Email notifications via Microsoft Graph API (OAuth2)",
+      "_comment_credentials": "Credentials configured via environment variables: IPSC_AZURE_TENANT_ID, IPSC_AZURE_CLIENT_ID, IPSC_AZURE_USER_ID",
+      "_comment_setup": "Run Setup-AzureCredentials.ps1 to configure Azure AD credentials",
+      "provider": "graph",
       "recipients": [
-        "your-email@gmail.com",
-        "friend@example.com"
+        "your-email@example.com"
       ],
-      "_comment_recipients": "First recipient is primary (To:), others are BCC'd",
+      "_comment_recipients": "List of email addresses to notify",
       "retry_attempts": 3,
       "timeout_seconds": 30,
-      "template_file": "templates/email.html"
+      "token_cache_path": "data/.token_cache.json"
     },
 
     "discord": {

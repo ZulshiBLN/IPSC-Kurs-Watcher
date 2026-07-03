@@ -289,6 +289,61 @@ Describe "Get-UtcTimestamp" {
     }
 }
 
+Describe "Protect-OAuthError" {
+    Context "OAuth2 Error Sanitization" {
+        It "masks client_secret" {
+            $input = "Error: invalid client_secret abc123xyz"
+            $result = Protect-OAuthError -ErrorMessage $input
+
+            $result | Should -Match '\[REDACTED_SECRET\]'
+            $result | Should -Not -Match 'abc123xyz'
+        }
+
+        It "masks client_id" {
+            $input = "Failed: client_id xyz789 not recognized"
+            $result = Protect-OAuthError -ErrorMessage $input
+
+            $result | Should -Match '\[REDACTED_ID\]'
+            $result | Should -Not -Match 'client_id xyz789'
+        }
+
+        It "masks tenant_id" {
+            $input = "Invalid tenant_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            $result = Protect-OAuthError -ErrorMessage $input
+
+            $result | Should -Match '\[REDACTED_TENANT\]'
+            $result | Should -Not -Match 'xxxx'
+        }
+
+        It "masks email addresses" {
+            $input = "User user@example.com not found in directory"
+            $result = Protect-OAuthError -ErrorMessage $input
+
+            $result | Should -Match '\[REDACTED_EMAIL\]'
+            $result | Should -Not -Match 'user@example.com'
+        }
+
+        It "preserves error codes and status" {
+            $input = "Error 401: Unauthorized - invalid client_secret xyz"
+            $result = Protect-OAuthError -ErrorMessage $input
+
+            $result | Should -Match '401'
+            $result | Should -Match 'Unauthorized'
+            $result | Should -Match '\[REDACTED_SECRET\]'
+        }
+
+        It "handles null input" {
+            $result = Protect-OAuthError -ErrorMessage $null
+            $result | Should -BeNullOrEmpty
+        }
+
+        It "handles empty string" {
+            $result = Protect-OAuthError -ErrorMessage ""
+            $result | Should -Be ""
+        }
+    }
+}
+
 Describe "Invoke-SecureWebRequest" {
     Context "Function Exists and Parameters" {
         It "Invoke-SecureWebRequest is a valid function" {

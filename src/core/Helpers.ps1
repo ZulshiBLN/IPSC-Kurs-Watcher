@@ -329,6 +329,46 @@ function Invoke-SecureWebRequest {
     }
 }
 
+function Protect-OAuthError {
+    <#
+    .SYNOPSIS
+    Masks sensitive information in OAuth2 error messages for safe logging.
+
+    .DESCRIPTION
+    Sanitizes OAuth2 error messages by masking client_secret, client_id, tenant_id,
+    and email addresses. Prevents accidental exposure of credentials in logs.
+
+    .PARAMETER ErrorMessage
+    OAuth2 error message to sanitize.
+
+    .OUTPUTS
+    String with sensitive parts masked.
+
+    .EXAMPLE
+    $error = "Invalid client_secret: xyz123abc for tenant_id: tenant-guid"
+    Protect-OAuthError -ErrorMessage $error
+    # Returns: "Invalid client_secret: [REDACTED_SECRET] for tenant_id: [REDACTED_TENANT]"
+
+    .NOTES
+    Used in OAuth2 token refresh and authentication error handling.
+    #>
+    [CmdletBinding()]
+    param([string]$ErrorMessage)
+
+    if (-not $ErrorMessage) { return $ErrorMessage }
+
+    $masked = $ErrorMessage
+    # Mask credential values (everything after : or = until space or end)
+    $masked = $masked -replace '(client_secret)[:\s=]+([^\s]+)', '$1: [REDACTED_SECRET]'
+    $masked = $masked -replace '(client_id)[:\s=]+([^\s]+)', '$1: [REDACTED_ID]'
+    $masked = $masked -replace '(tenant[_-]?id)[:\s=]+([^\s]+)', '$1: [REDACTED_TENANT]'
+    $masked = $masked -replace '(tenant)[:\s=]+([^\s]+)', '$1: [REDACTED_TENANT]'
+    # Mask email addresses
+    $masked = $masked -replace '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[REDACTED_EMAIL]'
+
+    return $masked
+}
+
 function Get-UtcTimestamp {
     <#
     .SYNOPSIS

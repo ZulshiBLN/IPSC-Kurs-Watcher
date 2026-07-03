@@ -171,15 +171,16 @@ function _RefreshOAuthToken {
         catch {
             $waitSeconds = [Math]::Pow(2, $attempt - 1)
             $errorMsg = $_.Exception.Message
+            $sanitizedError = Protect-OAuthError -ErrorMessage $errorMsg
 
             if ($attempt -lt $MaxRetries) {
                 Write-Log -Level WARN -Message "OAuth2 token refresh failed, retrying" `
-                    -Context @{ attempt = $attempt; max_retries = $MaxRetries; wait_seconds = $waitSeconds; error = $errorMsg }
+                    -Context @{ attempt = $attempt; max_retries = $MaxRetries; wait_seconds = $waitSeconds; error = $sanitizedError }
                 Start-Sleep -Seconds $waitSeconds
             }
             else {
                 Write-Log -Level ERROR -Message "OAuth2 token refresh failed on last attempt" `
-                    -Context @{ attempt = $attempt; error = $errorMsg }
+                    -Context @{ attempt = $attempt; error = $sanitizedError }
             }
         }
     }
