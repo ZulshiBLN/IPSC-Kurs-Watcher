@@ -240,6 +240,7 @@ function Update-StateWithCourse {
 
     if ($PSCmdlet.ShouldProcess("state.last_notified", "Update course state")) {
         $trackedCourses = if ($null -ne $State.last_notified) { $State.last_notified } else { @() }
+        Write-Host "[DEBUG] TrackedCourses type: $($trackedCourses.GetType().Name), Count: $($trackedCourses.Count), IsNull: $($null -eq $trackedCourses)" -ForegroundColor Cyan
         $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $trackedCourses
         $State.last_notified = $mergeResult.updated_state
     }
