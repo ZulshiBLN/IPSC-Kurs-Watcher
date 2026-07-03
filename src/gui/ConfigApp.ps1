@@ -43,16 +43,21 @@ function Start-ConfigurationApp {
         # Determine script directory
         $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 
-        # Load ViewModel
-        $viewModelPath = Join-Path $scriptDir "ViewModels/MainWindowViewModel.ps1"
+        # Load ViewModel (using simplified version for compatibility)
+        $viewModelPath = Join-Path $scriptDir "ViewModels/MainWindowViewModel-Simple.ps1"
         if (-not (Test-Path $viewModelPath)) {
             throw "ViewModel not found at: $viewModelPath"
         }
         . $viewModelPath
-        $viewModel = [MainWindowViewModel]::new()
+        $viewModel = New-MainWindowViewModel -ConfigPath $ConfigPath
+        Load-ViewModelConfiguration -ViewModel $viewModel -ConfigPath $ConfigPath | Out-Null
 
-        # Load XAML
-        $xamlPath = Join-Path $scriptDir "MainWindow.xaml"
+        # Load XAML (use simplified version for compatibility)
+        $xamlPath = Join-Path $scriptDir "MainWindow-Simple.xaml"
+        if (-not (Test-Path $xamlPath)) {
+            # Fallback to original if simple version doesn't exist
+            $xamlPath = Join-Path $scriptDir "MainWindow.xaml"
+        }
         if (-not (Test-Path $xamlPath)) {
             throw "MainWindow.xaml not found at: $xamlPath"
         }

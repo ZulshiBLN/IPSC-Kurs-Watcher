@@ -44,7 +44,19 @@ function Load-ViewModelConfiguration {
     )
 
     try {
-        . "$PSScriptRoot\..\core\Config.ps1"
+        # Find project root and load Config module
+        $projectRoot = if (Test-Path "src/core/Config.ps1") {
+            Get-Location
+        } else {
+            Split-Path (Split-Path (Split-Path $PSScriptRoot))
+        }
+
+        $configModulePath = Join-Path $projectRoot "src/core/Config.ps1"
+        if (-not (Test-Path $configModulePath)) {
+            throw "Config.ps1 not found at: $configModulePath"
+        }
+
+        . $configModulePath
         $config = Read-Config -ConfigPath $ConfigPath
 
         $ViewModel.Monitors = @($config.monitors)
