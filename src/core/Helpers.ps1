@@ -323,8 +323,10 @@ function Invoke-SecureWebRequest {
         return Invoke-WebRequest @params
     }
     catch {
+        $errorMsg = if ($_.Exception) { $_.Exception.Message } else { $_.ToString() }
+        $httpStatus = if ($_.Exception.Response) { $_.Exception.Response.StatusCode } else { 'Unknown' }
         Write-Log -Level ERROR -Message "Secure web request failed" `
-            -Context @{ uri = $Uri; method = $Method; error = $_.Exception.Message } -Exception $_
+            -Context @{ uri = $Uri; method = $Method; http_status = $httpStatus; error = $errorMsg } -Exception $_
         throw
     }
 }
