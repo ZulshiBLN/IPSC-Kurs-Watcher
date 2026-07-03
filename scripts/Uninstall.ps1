@@ -39,12 +39,6 @@ function Write-Success {
     Write-Host "[OK] $Text" -ForegroundColor Green
 }
 
-function Confirm-Step {
-    param([string]$Message)
-    $response = Read-Host "$Message (yes/no)"
-    return $response -eq 'yes'
-}
-
 Write-Header "IPSC Kurs Watcher - Complete Uninstall"
 
 Write-Warning-Custom "This will remove ALL IPSC Kurs Watcher components:" -ForegroundColor Yellow
@@ -66,32 +60,25 @@ $stepsFailed = 0
 # STEP 1: REMOVE SCHEDULED TASK (OPTIONAL - REQUIRES ADMIN)
 # ============================================================================
 
-Write-Header "Step 1: Remove Scheduled Task (Optional)"
+Write-Header "Step 1: Remove Scheduled Task"
 
 $taskName = "IPSC-Kurs-Watcher"
 $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 
 if ($task) {
     Write-Host "Found Scheduled Task: '$taskName'" -ForegroundColor Cyan
-    Write-Host ""
-
-    if (Confirm-Step "Do you want to remove this Scheduled Task?") {
-        $result = Invoke-RemoveScheduledTask
-        if ($result) {
-            Write-Success "Step 1 completed"
-        }
-        else {
-            Write-Warning-Custom "Step 1 failed"
-            $stepsFailed++
-        }
+    $result = Invoke-RemoveScheduledTask
+    if ($result) {
+        Write-Success "Step 1 completed"
     }
     else {
-        Write-Host "[INFO] Step 1 skipped - Scheduled Task will remain" -ForegroundColor Gray
+        Write-Warning-Custom "Step 1 failed"
+        $stepsFailed++
     }
 }
 else {
     Write-Host "No Scheduled Task found (was never set up)" -ForegroundColor Gray
-    Write-Host "[INFO] Step 1 skipped" -ForegroundColor Gray
+    Write-Success "Step 1 completed"
 }
 
 # ============================================================================
@@ -118,29 +105,22 @@ else {
 
 Write-Header "Step 3: Remove Azure AD Credentials"
 
-Write-Host "Removing encrypted Azure Client Secret..." -ForegroundColor Gray
-Write-Host ""
+$CredentialStorePath = "$env:APPDATA\IPSC-Kurs-Watcher\credentials"
+$credentialFile = Join-Path $CredentialStorePath "IPSC-Kurs-Watcher-Secret.bin"
 
-if (Confirm-Step "Remove Azure credentials?") {
-    $CredentialStorePath = "$env:APPDATA\IPSC-Kurs-Watcher\credentials"
-    $credentialFile = Join-Path $CredentialStorePath "IPSC-Kurs-Watcher-Secret.bin"
-
-    try {
-        if (Test-Path $credentialFile) {
-            Remove-Item -Path $credentialFile -Force
-            Write-Success "Azure credentials removed"
-        }
-        else {
-            Write-Host "[INFO] Credential file not found (already removed)" -ForegroundColor Gray
-        }
+try {
+    if (Test-Path $credentialFile) {
+        Remove-Item -Path $credentialFile -Force
+        Write-Success "Azure credentials removed"
     }
-    catch {
-        Write-Warning-Custom "Failed to remove credential file: $_"
-        $stepsFailed++
+    else {
+        Write-Host "[INFO] Credential file not found (already removed)" -ForegroundColor Gray
+        Write-Success "Step 3 completed"
     }
 }
-else {
-    Write-Host "[INFO] Step 3 skipped" -ForegroundColor Gray
+catch {
+    Write-Warning-Custom "Failed to remove credential file: $_"
+    $stepsFailed++
 }
 
 # ============================================================================
