@@ -21,84 +21,15 @@ function Test-ToastSupported {
     }
 }
 
-function Group-AlertsByType {
-    <#
-    .SYNOPSIS
-    Group alerts by alert_reason and add metadata (icon, color, description).
+function _GetAlertEmoji {
+    param([string]$AlertReason)
 
-    .PARAMETER Alerts
-    Array of alert objects with alert_reason property
-
-    .OUTPUTS
-    Array of grouped alert objects with properties:
-      - AlertType: Enum value (NEW_COURSE, AVAILABILITY_REDUCED, SOLD_OUT)
-      - Emoji: Visual emoji (🟢, 🟡, 🔴)
-      - Color: Hex color code
-      - Count: Number of alerts in group
-      - Alerts: Array of alert objects in group
-    #>
-    param([object[]]$Alerts)
-
-    $alertTypeMap = @{
-        'NEW_COURSE' = @{
-            Emoji = '🟢'
-            Color = '0x00FF00'
-            Description = 'NEW COURSES'
-        }
-        'AVAILABILITY_REDUCED' = @{
-            Emoji = '🟡'
-            Color = '0xFFFF00'
-            Description = 'AVAILABILITY REDUCED'
-        }
-        'SOLD_OUT' = @{
-            Emoji = '🔴'
-            Color = '0xFF0000'
-            Description = 'SOLD OUT'
-        }
+    switch ($AlertReason) {
+        'NEW_COURSE' { return '🟢' }
+        'AVAILABILITY_REDUCED' { return '🟡' }
+        'SOLD_OUT' { return '🔴' }
+        default { return '⚪' }
     }
-
-    $groups = $Alerts | Group-Object -Property alert_reason
-
-    $result = @()
-    foreach ($group in $groups) {
-        $metadata = $alertTypeMap[$group.Name]
-        if ($metadata) {
-            $result += @{
-                AlertType = $group.Name
-                Emoji = $metadata.Emoji
-                Color = $metadata.Color
-                Description = $metadata.Description
-                Count = $group.Count
-                Alerts = @($group.Group)
-            }
-        }
-    }
-
-    return $result
-}
-
-function _NewToastTitle {
-    param([object]$AlertGroup)
-
-    return "$($AlertGroup.Emoji) $($AlertGroup.Description) ($($AlertGroup.Count))"
-}
-
-function _NewToastBody {
-    param([object]$AlertGroup, [int]$MaxCourses = 5)
-
-    $courses = @($AlertGroup.Alerts | Select-Object -First $MaxCourses)
-    $lines = @()
-
-    foreach ($course in $courses) {
-        $line = "$($course.name) ($($course.time), $($course.availability) spots)"
-        $lines += $line
-    }
-
-    if ($AlertGroup.Alerts.Count -gt $MaxCourses) {
-        $lines += "+$($AlertGroup.Alerts.Count - $MaxCourses) more..."
-    }
-
-    return $lines -join ' | '
 }
 
 function _NewToastXML {
@@ -130,7 +61,7 @@ function _NewToastXML {
 
     $escapedTitle = [System.Security.SecurityElement]::Escape($Title)
     $escapedUrl = [System.Security.SecurityElement]::Escape($ActionUrl)
-    $bodyWithUrl = [System.Security.SecurityElement]::Escape("$Body`n`nURL: $ActionUrl")
+    $bodyWithUrl = [System.Security.SecurityElement]::Escape("$Body`n`n$ActionUrl")
 
     $audio = if ($SoundEnabled) {
         '<audio src="ms-winsoundevent:Notification.Default"/>'
@@ -158,28 +89,6 @@ function _NewToastXML {
     return $xml
 }
 
-function _InvokeToastAction {
-    <#
-    .SYNOPSIS
-    Open URL in default browser (handles Toast click action).
-
-    .PARAMETER MainPageUrl
-    URL to open in browser
-    #>
-    param([string]$MainPageUrl)
-
-    try {
-        if ([string]::IsNullOrWhiteSpace($MainPageUrl)) {
-            return
-        }
-
-        Start-Process $MainPageUrl -ErrorAction Stop
-    }
-    catch {
-        Write-Log -Level WARN -Message "Failed to open Toast action URL" `
-            -Context @{ url = $MainPageUrl } -Exception $_
-    }
-}
 
 function _SendToastViaWinRT {
     <#
@@ -219,29 +128,26 @@ function _SendToastViaWinRT {
 function Send-ToastNotification {
     <#
     .SYNOPSIS
-    Send Windows Toast notifications for course alerts.
+    Send Windows Toast notifications for course alerts (one Toast per course).
 
     .DESCRIPTION
-    Groups alerts by type (NEW, REDUCED, SOLD_OUT) and sends Windows Toast notification.
-    Groups are displayed as separate Toasts. Clicking opens main course page.
+    Each alert (course) gets its own Toast notification with course-specific URL.
+    Toast title includes alert emoji and course name. Body shows time, availability, price.
 
     .PARAMETER Alerts
-    Array of alert objects with alert_reason, name, time, availability properties
+    Array of alert objects with alert_reason, name, time, availability, price, url properties
 
     .PARAMETER Config
     Toast notification configuration object with properties:
       - enabled: Boolean
       - sound_enabled: Boolean
-      - group_by_type: Boolean
-      - max_courses_per_group: Integer
       - auto_dismiss_seconds: Integer
-      - main_page_url: String (URL to open on click)
 
     .EXAMPLE
     $alerts = @(
-        @{ alert_reason = 'NEW_COURSE'; name = 'Basic 2.0'; time = '19:00'; availability = 3 }
+        @{ alert_reason = 'NEW_COURSE'; name = 'Basic 2.0'; time = '09:30-13:00'; availability = 2; price = 'CHF 280.00'; url = 'https://...' }
     )
-    $config = @{ enabled = $true; sound_enabled = $true; ... }
+    $config = @{ enabled = $true; sound_enabled = $true }
     Send-ToastNotification -Alerts $alerts -Config $config
     #>
     [CmdletBinding(SupportsShouldProcess)]
@@ -261,18 +167,18 @@ function Send-ToastNotification {
 
     if ($PSCmdlet.ShouldProcess("Toast notifications", "Send $($Alerts.Count) alerts")) {
         try {
-            $groupedAlerts = Group-AlertsByType -Alerts $Alerts
             $toastCount = 0
             $failureCount = 0
 
-            foreach ($group in $groupedAlerts) {
+            foreach ($alert in $Alerts) {
                 try {
-                    $title = _NewToastTitle -AlertGroup $group
-                    $body = _NewToastBody -AlertGroup $group -MaxCourses $Config.max_courses_per_group
+                    $emoji = _GetAlertEmoji -AlertReason $alert.alert_reason
+                    $title = "$emoji $($alert.name) | $($alert.availability) Slots"
+                    $body = "$($alert.date) | $($alert.time) | $($alert.price)"
 
                     $toastXml = _NewToastXML -Title $title `
                                            -Body $body `
-                                           -ActionUrl $Config.main_page_url `
+                                           -ActionUrl $alert.url `
                                            -SoundEnabled $Config.sound_enabled
 
                     $sendSuccess = _SendToastViaWinRT -ToastXml $toastXml
@@ -280,8 +186,8 @@ function Send-ToastNotification {
                     if ($sendSuccess) {
                         Write-Log -Level INFO -Message "Toast notification sent" `
                             -Context @{
-                                alert_type = $group.AlertType
-                                count = $group.Count
+                                alert_type = $alert.alert_reason
+                                course_name = $alert.name
                                 title = $title
                             }
                         $toastCount++
@@ -291,8 +197,8 @@ function Send-ToastNotification {
                     }
                 }
                 catch {
-                    Write-Log -Level WARN -Message "Failed to create Toast for $($group.AlertType)" `
-                        -Context @{ count = $group.Count } -Exception $_
+                    Write-Log -Level WARN -Message "Failed to create Toast for $($alert.name)" `
+                        -Context @{ alert_type = $alert.alert_reason } -Exception $_
                     $failureCount++
                 }
             }
@@ -300,7 +206,6 @@ function Send-ToastNotification {
             Write-Log -Level INFO -Message "Toast notifications completed" `
                 -Context @{
                     total_alerts = $Alerts.Count
-                    groups = $groupedAlerts.Count
                     sent = $toastCount
                     failed = $failureCount
                 }

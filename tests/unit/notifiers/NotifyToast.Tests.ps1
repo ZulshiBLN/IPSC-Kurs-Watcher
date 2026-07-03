@@ -16,7 +16,7 @@ Describe "Send-ToastNotification" {
 
     Context "Configuration Validation" {
         It "returns silently when disabled" {
-            $alerts = @(@{ alert_reason = 'NEW_COURSE'; name = 'Test'; time = '19:00'; availability = 3 })
+            $alerts = @(@{ alert_reason = 'NEW_COURSE'; name = 'Test'; time = '19:00'; availability = 3; price = 'CHF 100'; url = 'https://example.com' })
             $config = @{ enabled = $false }
 
             { Send-ToastNotification -Alerts $alerts -Config $config } | Should -Not -Throw
@@ -29,95 +29,24 @@ Describe "Send-ToastNotification" {
         }
 
         It "requires Config parameter (mandatory)" {
-            $alerts = @(@{ alert_reason = 'NEW_COURSE'; name = 'Test'; time = '19:00'; availability = 3 })
+            $alerts = @(@{ alert_reason = 'NEW_COURSE'; name = 'Test'; time = '19:00'; availability = 3; price = 'CHF 100'; url = 'https://example.com' })
 
             { Send-ToastNotification -Alerts $alerts } | Should -Throw
         }
     }
 
-    Context "Grouping Logic" {
-        It "function exists and is callable" {
-            { Group-AlertsByType -Alerts @(@{ alert_reason = 'NEW_COURSE'; name = 'Test' }) } | Should -Not -Throw
-        }
-    }
-
-    Context "Title Formatting" {
-        It "formats title with emoji and count" {
-            $alertGroup = @{
-                Emoji = '🟢'
-                Description = 'NEW COURSES'
-                Count = 2
-            }
-
-            $title = _NewToastTitle -AlertGroup $alertGroup
-
-            $title | Should -Be '🟢 NEW COURSES (2)'
-        }
-
-        It "handles single alert in title" {
-            $alertGroup = @{
-                Emoji = '🟡'
-                Description = 'AVAILABILITY REDUCED'
-                Count = 1
-            }
-
-            $title = _NewToastTitle -AlertGroup $alertGroup
-
-            $title | Should -Be '🟡 AVAILABILITY REDUCED (1)'
-        }
-    }
-
-    Context "Body Formatting" {
-        It "formats body with course details" {
-            $alertGroup = @{
-                Alerts = @(
-                    @{ name = 'Basic 2.0'; time = '19:00'; availability = 3 }
-                    @{ name = 'Advanced'; time = '09:00'; availability = 2 }
-                )
-            }
-
-            $body = _NewToastBody -AlertGroup $alertGroup -MaxCourses 5
-
-            $body | Should -Match 'Basic 2.0'
-            $body | Should -Match 'Advanced'
-            $body | Should -Match '19:00'
-            $body | Should -Match '09:00'
-        }
-
-        It "respects MaxCourses limit" {
-            $alertGroup = @{
-                Alerts = @(
-                    @{ name = 'Course1'; time = '10:00'; availability = 1 }
-                    @{ name = 'Course2'; time = '11:00'; availability = 2 }
-                    @{ name = 'Course3'; time = '12:00'; availability = 3 }
-                )
-            }
-
-            $body = _NewToastBody -AlertGroup $alertGroup -MaxCourses 2
-
-            $body | Should -Match 'Course1'
-            $body | Should -Match 'Course2'
-            $body | Should -Match '\+1 more\.\.\.'
-        }
-
-        It "handles single course" {
-            $alertGroup = @{
-                Alerts = @(
-                    @{ name = 'Tryout'; time = '15:00'; availability = 5 }
-                )
-            }
-
-            $body = _NewToastBody -AlertGroup $alertGroup -MaxCourses 5
-
-            $body | Should -Be 'Tryout (15:00, 5 spots)'
+    Context "Alert Emoji Mapping" {
+        It "_GetAlertEmoji function exists and returns value" {
+            $emoji = _GetAlertEmoji -AlertReason 'NEW_COURSE'
+            $emoji | Should -Not -BeNullOrEmpty
         }
     }
 
     Context "XML Generation" {
         It "creates valid XML structure" {
-            $xml = _NewToastXML -Title '🟢 NEW COURSES (1)' `
-                               -Body 'Basic (19:00, 3 spots)' `
-                               -ActionUrl 'https://example.com' `
+            $xml = _NewToastXML -Title '🟢 IPSC Basic 2.0' `
+                               -Body '09:30-13:00 | 2 spots | CHF 280.00' `
+                               -ActionUrl 'https://example.com/course1' `
                                -SoundEnabled $true
 
             $xml | Should -Match '<\?xml'
@@ -129,30 +58,52 @@ Describe "Send-ToastNotification" {
         }
 
         It "includes title in XML" {
-            $xml = _NewToastXML -Title 'Test Title' `
+            $xml = _NewToastXML -Title '🟢 Test Course' `
                                -Body 'Test Body' `
                                -ActionUrl 'https://example.com' `
                                -SoundEnabled $true
 
-            $xml | Should -Match 'Test Title'
+            $xml | Should -Match 'Test Course'
         }
 
         It "includes body in XML" {
             $xml = _NewToastXML -Title 'Test Title' `
-                               -Body 'Test Body' `
+                               -Body '12.07.2026 | 19:00-21:00 | CHF 150.00' `
                                -ActionUrl 'https://example.com' `
                                -SoundEnabled $true
 
-            $xml | Should -Match 'Test Body'
+            $xml | Should -Match '12.07.2026'
+            $xml | Should -Match '19:00-21:00'
+            $xml | Should -Match 'CHF 150.00'
         }
 
-        It "includes action URL in XML" {
-            $xml = _NewToastXML -Title 'Title' `
-                               -Body 'Body' `
-                               -ActionUrl 'https://shooting-store.ch' `
+        It "includes course-specific URL in XML" {
+            $xml = _NewToastXML -Title 'Course' `
+                               -Body 'Details' `
+                               -ActionUrl 'https://shooting-store.ch/de/produkt/course-123' `
                                -SoundEnabled $true
 
-            $xml | Should -Match 'https://shooting-store.ch'
+            $xml | Should -Match 'https://shooting-store.ch/de/produkt/course-123'
+        }
+
+        It "includes View Course action button" {
+            $xml = _NewToastXML -Title 'Course' `
+                               -Body 'Details' `
+                               -ActionUrl 'https://example.com' `
+                               -SoundEnabled $true
+
+            $xml | Should -Match 'activationType="protocol"'
+            $xml | Should -Match 'content="View Course"'
+        }
+
+        It "includes Dismiss action button" {
+            $xml = _NewToastXML -Title 'Course' `
+                               -Body 'Details' `
+                               -ActionUrl 'https://example.com' `
+                               -SoundEnabled $true
+
+            $xml | Should -Match 'activationType="system"'
+            $xml | Should -Match 'content="Dismiss"'
         }
 
         It "includes audio element when sound enabled" {
@@ -206,16 +157,16 @@ Describe "Send-ToastNotification" {
             Get-Command Test-ToastSupported | Should -Not -BeNullOrEmpty
         }
 
-        It "_NewToastBody function exists" {
-            Get-Command _NewToastBody | Should -Not -BeNullOrEmpty
-        }
-
-        It "_NewToastTitle function exists" {
-            Get-Command _NewToastTitle | Should -Not -BeNullOrEmpty
+        It "_GetAlertEmoji function exists" {
+            Get-Command _GetAlertEmoji | Should -Not -BeNullOrEmpty
         }
 
         It "_NewToastXML function exists" {
             Get-Command _NewToastXML | Should -Not -BeNullOrEmpty
+        }
+
+        It "_SendToastViaWinRT function exists" {
+            Get-Command _SendToastViaWinRT | Should -Not -BeNullOrEmpty
         }
     }
 }
