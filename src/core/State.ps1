@@ -26,6 +26,7 @@ function Get-State {
     .NOTES
     File encoding is always UTF-8. Gracefully handles missing files and parse errors.
     #>
+    [CmdletBinding()]
     param([string]$StateFile = 'data/state.json')
     $stateDir = Split-Path $StateFile
     if ($stateDir -and -not (Test-Path $stateDir)) { New-Item -ItemType Directory -Path $stateDir -Force | Out-Null }
@@ -130,6 +131,7 @@ function Merge-CourseState {
     .OUTPUTS
     Hashtable with 'alerts' (new, reduced, sold_out) and 'updated_state' (merged courses for state.json)
     #>
+    [CmdletBinding()]
     param([object[]]$CurrentCourses, [object[]]$TrackedCourses)
 
     $alerts = @{ new = @(); reduced = @(); sold_out = @() }

@@ -388,6 +388,8 @@ function Get-UtcTimestamp {
     .NOTES
     Always UTC, never local time. Use for state files and logs.
     #>
+    [CmdletBinding()]
+    param()
     [datetime]::UtcNow.ToString('o')
 }
 

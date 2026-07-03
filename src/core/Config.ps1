@@ -25,6 +25,7 @@ function Get-Config {
     .NOTES
     File encoding must be UTF-8. Invalid JSON or missing file will throw an error.
     #>
+    [CmdletBinding()]
     param([string]$ConfigPath = 'config/config.json')
     if (-not (Test-Path $ConfigPath)) { throw "Config file not found: $ConfigPath" }
     try {
@@ -62,6 +63,7 @@ function Test-MonitorConfig {
     .NOTES
     Throws an error if any required field is missing. Called during config validation.
     #>
+    [CmdletBinding()]
     param([hashtable]$MonitorConfig)
     if (-not $MonitorConfig.id) { throw "Monitor must have 'id'" }
     if (-not $MonitorConfig.provider) { throw "Monitor must have 'provider'" }

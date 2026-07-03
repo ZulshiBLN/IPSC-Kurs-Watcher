@@ -35,6 +35,7 @@ function Initialize-Logging {
     .NOTES
     Call this once at script startup before using Write-Log.
     #>
+    [CmdletBinding()]
     param(
         [string]$LogDir = 'data/logs',
         [string]$LogLevel = 'INFO',
@@ -85,6 +86,7 @@ function Write-Log {
     .NOTES
     Requires Initialize-Logging to be called first.
     #>
+    [CmdletBinding()]
     param(
         [ValidateSet('DEBUG', 'INFO', 'WARN', 'ERROR')][string]$Level = 'INFO',
         [string]$Message,
