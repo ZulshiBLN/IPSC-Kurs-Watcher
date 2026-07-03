@@ -34,7 +34,7 @@ function Get-State {
     if (Test-Path $StateFile) {
         try {
             $stateJson = Get-Content $StateFile -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
-            $trackedCourses = if ($null -ne $stateJson.last_notified) { @($stateJson.last_notified) } else { @() }
+            $trackedCourses = if ($null -ne $stateJson.last_notified) { $stateJson.last_notified } else { @() }
             return @{ version = $stateJson.version; last_poll = $stateJson.last_poll; last_notified = $trackedCourses }
         }
         catch { return @{ version = 1; last_poll = [datetime]::UtcNow.ToString('o'); last_notified = @() } }
@@ -240,7 +240,6 @@ function Update-StateWithCourse {
 
     if ($PSCmdlet.ShouldProcess("state.last_notified", "Update course state")) {
         $trackedCourses = if ($null -ne $State.last_notified) { $State.last_notified } else { @() }
-        Write-Host "[DEBUG] TrackedCourses type: $($trackedCourses.GetType().Name), Count: $($trackedCourses.Count), IsNull: $($null -eq $trackedCourses)" -ForegroundColor Cyan
         $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $trackedCourses
         $State.last_notified = $mergeResult.updated_state
     }
