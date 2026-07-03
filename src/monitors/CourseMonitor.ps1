@@ -38,7 +38,7 @@ class CourseMonitor : MonitorBase {
     }
 
     hidden [object[]] _FetchAndParseCourses() {
-        $response = Invoke-WebRequest -Uri $this.Url -TimeoutSec $this.TimeoutSeconds -UseBasicParsing
+        $response = Invoke-SecureWebRequest -Uri $this.Url -TimeoutSeconds $this.TimeoutSeconds
         $blocks = $response.Content -split '<div class="artikel_box_content_wrapper">'
         $courses = @()
         
@@ -64,7 +64,7 @@ class CourseMonitor : MonitorBase {
                             continue
                         }
                         try {
-                            $detailResponse = Invoke-WebRequest -Uri $detailUrl -TimeoutSec $this.TimeoutSeconds -UseBasicParsing
+                            $detailResponse = Invoke-SecureWebRequest -Uri $detailUrl -TimeoutSeconds $this.TimeoutSeconds
                             if ($detailResponse.Content -match 'data-update="lagerinfo_anzeige\.lagerinfo">(\d+)\s+Artikel') {
                                 $availability = [int]$Matches[1]
                             }

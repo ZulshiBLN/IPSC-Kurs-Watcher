@@ -289,6 +289,50 @@ Describe "Get-UtcTimestamp" {
     }
 }
 
+Describe "Invoke-SecureWebRequest" {
+    Context "Function Exists and Parameters" {
+        It "Invoke-SecureWebRequest is a valid function" {
+            Get-Command Invoke-SecureWebRequest -ErrorAction SilentlyContinue | Should -Not -Be $null
+        }
+
+        It "throws on null Uri" {
+            { Invoke-SecureWebRequest -Uri $null } | Should -Throw
+        }
+
+        It "throws on empty Uri" {
+            { Invoke-SecureWebRequest -Uri '' } | Should -Throw
+        }
+
+        It "accepts Method parameter" {
+            Get-Command Invoke-SecureWebRequest -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty Parameters |
+                Select-Object -ExpandProperty Keys |
+                Should -Contain 'Method'
+        }
+
+        It "accepts Headers parameter" {
+            Get-Command Invoke-SecureWebRequest -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty Parameters |
+                Select-Object -ExpandProperty Keys |
+                Should -Contain 'Headers'
+        }
+
+        It "accepts Body parameter" {
+            Get-Command Invoke-SecureWebRequest -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty Parameters |
+                Select-Object -ExpandProperty Keys |
+                Should -Contain 'Body'
+        }
+
+        It "accepts TimeoutSeconds parameter" {
+            Get-Command Invoke-SecureWebRequest -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty Parameters |
+                Select-Object -ExpandProperty Keys |
+                Should -Contain 'TimeoutSeconds'
+        }
+    }
+}
+
 Describe "ConvertTo-UnixTimestamp" {
     Context "Timestamp Conversion" {
         It "converts DateTime to Unix timestamp" {

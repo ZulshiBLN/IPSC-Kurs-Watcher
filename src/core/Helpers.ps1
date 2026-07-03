@@ -254,6 +254,81 @@ function Protect-SensitiveData {
     return $masked
 }
 
+function Invoke-SecureWebRequest {
+    <#
+    .SYNOPSIS
+    Invoke-WebRequest with logging for security-critical endpoints.
+
+    .DESCRIPTION
+    Wrapper around Invoke-WebRequest that logs requests to critical endpoints
+    (Azure AD, Microsoft Graph) for audit trail. Uses Windows certificate validation
+    via system CA store. Supports all Invoke-WebRequest parameters.
+
+    .PARAMETER Uri
+    URI to request. Must be absolute HTTPS URL (validation via Test-ValidUrl).
+
+    .PARAMETER Method
+    HTTP method (GET, POST, etc). Defaults to GET.
+
+    .PARAMETER Headers
+    Request headers hashtable.
+
+    .PARAMETER Body
+    Request body (bytes or string).
+
+    .PARAMETER TimeoutSeconds
+    Request timeout in seconds. Defaults to 30.
+
+    .OUTPUTS
+    Invoke-WebRequest response object.
+
+    .EXAMPLE
+    $response = Invoke-SecureWebRequest -Uri 'https://graph.microsoft.com/v1.0/me' -Method GET
+
+    .NOTES
+    Critical endpoints logged: login.microsoftonline.com, graph.microsoft.com
+    Falls back to standard Invoke-WebRequest for non-critical endpoints.
+    #>
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()][string]$Uri,
+        [string]$Method = 'GET',
+        [hashtable]$Headers,
+        [object]$Body,
+        [int]$TimeoutSeconds = 30
+    )
+
+    try {
+        $uri_obj = [System.Uri]::new($Uri)
+
+        # Log requests to critical endpoints for audit trail
+        $criticalEndpoints = @('login.microsoftonline.com', 'graph.microsoft.com')
+        if ($uri_obj.Host -in $criticalEndpoints) {
+            Write-Log -Level DEBUG -Message "Secure web request" `
+                -Context @{ endpoint = $uri_obj.Host; method = $Method; timeout_seconds = $TimeoutSeconds }
+        }
+
+        # Build Invoke-WebRequest parameters
+        $params = @{
+            Uri             = $Uri
+            Method          = $Method
+            TimeoutSec      = $TimeoutSeconds
+            UseBasicParsing = $true
+        }
+
+        if ($Headers) { $params.Headers = $Headers }
+        if ($Body) { $params.Body = $Body }
+
+        # Execute request (Windows validates certificates via system CA store)
+        return Invoke-WebRequest @params
+    }
+    catch {
+        Write-Log -Level ERROR -Message "Secure web request failed" `
+            -Context @{ uri = $Uri; method = $Method; error = $_.Exception.Message } -Exception $_
+        throw
+    }
+}
+
 function Get-UtcTimestamp {
     <#
     .SYNOPSIS

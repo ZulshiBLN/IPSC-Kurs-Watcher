@@ -157,9 +157,9 @@ function _RefreshOAuthToken {
                 grant_type    = "client_credentials"
             }
 
-            $response = Invoke-WebRequest -Uri $tokenUri -Method POST -Body $body `
-                -ContentType "application/x-www-form-urlencoded" -UseBasicParsing `
-                -TimeoutSec $TimeoutSeconds -ErrorAction Stop
+            $response = Invoke-SecureWebRequest -Uri $tokenUri -Method POST -Body $body `
+                -Headers @{ "Content-Type" = "application/x-www-form-urlencoded" } `
+                -TimeoutSeconds $TimeoutSeconds
 
             $token = $response.Content | ConvertFrom-Json
             $unixEpoch = [DateTime]'1970-01-01'
@@ -357,9 +357,9 @@ function _SendMailViaGraph {
                 return $false
             }
 
-            Invoke-WebRequest -Uri $sendMailUri -Method POST `
-                -Headers $headers -Body $jsonBodyBytes -UseBasicParsing `
-                -TimeoutSec $TimeoutSeconds -ErrorAction Stop | Out-Null
+            Invoke-SecureWebRequest -Uri $sendMailUri -Method POST `
+                -Headers $headers -Body $jsonBodyBytes `
+                -TimeoutSeconds $TimeoutSeconds | Out-Null
 
             Write-Log -Level INFO -Message "Email sent successfully" `
                 -Context @{ recipients = $Recipients.Count }
