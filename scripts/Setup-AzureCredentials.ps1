@@ -75,9 +75,19 @@ if (-not $clientId) {
     exit 1
 }
 
-$clientSecret = Read-Host "Client Secret (will be masked)"
-if (-not $clientSecret) {
+$secureSecret = Read-Host "Client Secret (will be masked)" -AsSecureString
+if (-not $secureSecret -or $secureSecret.Length -eq 0) {
     Write-Error-Custom "Client Secret is required"
+    exit 1
+}
+
+try {
+    $clientSecret = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [System.Runtime.InteropServices.Marshal]::SecureStringToCoTaskMemUni($secureSecret)
+    )
+}
+catch {
+    Write-Error-Custom "Failed to process Client Secret: $_"
     exit 1
 }
 
