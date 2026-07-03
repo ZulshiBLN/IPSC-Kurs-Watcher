@@ -19,7 +19,7 @@ function Save-State { param([hashtable]$State, [string]$StateFile = 'data/state.
     if ($stateDir -and -not (Test-Path $stateDir)) { New-Item -ItemType Directory -Path $stateDir -Force | Out-Null }
     try {
         $State.last_poll = [datetime]::UtcNow.ToString('o')
-        $State | ConvertTo-Json -Depth 10 | Set-Content $StateFile -Encoding UTF8 -ErrorAction Stop
+        $State | ConvertTo-Json -Depth 10 -Compress | Set-Content $StateFile -Encoding UTF8 -ErrorAction Stop
     }
     catch { Write-Log -Level ERROR -Message "Failed to save state" -Context @{ file = $StateFile } -Exception $_ }
 }
