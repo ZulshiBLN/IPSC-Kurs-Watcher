@@ -69,7 +69,7 @@ $stepsFailed = 0
 # STEP 1: REMOVE SCHEDULED TASK (OPTIONAL - REQUIRES ADMIN)
 # ============================================================================
 
-Write-Header "Step 1: Remove Scheduled Task"
+Write-Header "Step 1: Remove Scheduled Task (Optional)"
 
 if (-not $isAdmin) {
     Write-Host "[WARN] This step requires Administrator privileges (skipping)" -ForegroundColor Yellow
@@ -77,16 +77,30 @@ if (-not $isAdmin) {
     Write-Host "       .\Remove-ScheduledTask.ps1`n" -ForegroundColor Gray
 }
 else {
-    Write-Host "Removing Windows Scheduled Task..." -ForegroundColor Gray
-    Write-Host ""
+    $taskName = "IPSC-Kurs-Watcher"
+    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 
-    $result = Invoke-RemoveScheduledTask
-    if ($result) {
-        Write-Success "Step 1 completed"
+    if ($task) {
+        Write-Host "Found Scheduled Task: '$taskName'" -ForegroundColor Cyan
+        Write-Host ""
+
+        if (Confirm-Step "Do you want to remove this Scheduled Task?") {
+            $result = Invoke-RemoveScheduledTask
+            if ($result) {
+                Write-Success "Step 1 completed"
+            }
+            else {
+                Write-Warning-Custom "Step 1 failed"
+                $stepsFailed++
+            }
+        }
+        else {
+            Write-Host "[INFO] Step 1 skipped - Scheduled Task will remain" -ForegroundColor Gray
+        }
     }
     else {
-        Write-Warning-Custom "Step 1 failed or was skipped"
-        $stepsFailed++
+        Write-Host "No Scheduled Task found (was never set up)" -ForegroundColor Gray
+        Write-Host "[INFO] Step 1 skipped" -ForegroundColor Gray
     }
 }
 

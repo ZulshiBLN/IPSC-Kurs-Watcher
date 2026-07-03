@@ -137,7 +137,11 @@ else {
 # STEP 4: SCHEDULED TASK (OPTIONAL, REQUIRES ADMIN)
 # ============================================================================
 
-Write-Header "Step 4: Create Scheduled Task (Optional)"
+Write-Header "Step 4: Create Scheduled Task (Optional - Requires Admin)"
+
+Write-Host "This creates an automated task to run IPSC Kurs Watcher at regular intervals." -ForegroundColor Gray
+Write-Host "(You can skip this and run monitoring manually with .\Scheduler.ps1)" -ForegroundColor Gray
+Write-Host ""
 
 if (-not $isAdmin) {
     Write-Host "[WARN] This step requires Administrator privileges" -ForegroundColor Yellow
@@ -146,9 +150,6 @@ if (-not $isAdmin) {
     Write-Host ""
 }
 else {
-    Write-Host "This creates an automated task to run IPSC Kurs Watcher at regular intervals." -ForegroundColor Gray
-    Write-Host ""
-
     if (Confirm-Step "Do you want to set up the Scheduled Task now?") {
         Write-Host ""
         $result = Invoke-SetScheduledTask
