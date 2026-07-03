@@ -59,18 +59,13 @@ Write-Header "Step 1: Register App Identity for Toast Notifications"
 Write-Host "This registers 'IPSC Kurs Monitor' as the app name in Windows Toast notifications." -ForegroundColor Gray
 Write-Host ""
 
-if (Confirm-Step "Do you want to set up app identity now?") {
-    Write-Host ""
-    $result = Invoke-SetAppIdentity
-    if ($result) {
-        Write-Success "Step 1 completed"
-    }
-    else {
-        Write-Host "[WARN] Step 1 skipped or failed" -ForegroundColor Yellow
-    }
+$result = Invoke-SetAppIdentity
+if ($result) {
+    Write-Success "Step 1 completed"
 }
 else {
-    Write-Host "[INFO] Step 1 skipped - you can run later with: .\Set-AppIdentity.ps1" -ForegroundColor Gray
+    Write-Host "[WARN] Step 1 failed" -ForegroundColor Yellow
+    Write-Host "You can retry later with: .\Set-AppIdentity.ps1" -ForegroundColor Gray
 }
 
 # ============================================================================
@@ -86,16 +81,10 @@ Write-Host "  - Azure Client ID (Application ID)" -ForegroundColor Gray
 Write-Host "  - Azure Client Secret" -ForegroundColor Gray
 Write-Host ""
 
-if (Confirm-Step "Do you want to configure Azure credentials now?") {
-    Write-Host ""
-    # Call the standalone Set-AzureCredentials script to handle all the logic
-    & "$PSScriptRoot\Set-AzureCredentials.ps1"
+# Call the standalone Set-AzureCredentials script to handle all the logic
+& "$PSScriptRoot\Set-AzureCredentials.ps1"
 
-    Write-Success "Step 2 completed"
-}
-else {
-    Write-Host "[INFO] Step 2 skipped - you can run later with: .\Set-AzureCredentials.ps1" -ForegroundColor Gray
-}
+Write-Success "Step 2 completed"
 
 # ============================================================================
 # STEP 3: ENVIRONMENT VARIABLES
@@ -111,18 +100,13 @@ Write-Host "  - IPSC_CREDENTIAL_STORE_PATH (optional)" -ForegroundColor Gray
 Write-Host "  - IPSC_DISCORD_WEBHOOKS (optional)" -ForegroundColor Gray
 Write-Host ""
 
-if (Confirm-Step "Do you want to set environment variables now?") {
-    Write-Host ""
-    $result = Invoke-SetEnvironmentVariables
-    if ($result) {
-        Write-Success "Step 3 completed"
-    }
-    else {
-        Write-Host "[WARN] Step 3 skipped or failed" -ForegroundColor Yellow
-    }
+$result = Invoke-SetEnvironmentVariables
+if ($result) {
+    Write-Success "Step 3 completed"
 }
 else {
-    Write-Host "[INFO] Step 3 skipped - you can run later with: .\Set-EnvironmentVariables.ps1" -ForegroundColor Gray
+    Write-Host "[WARN] Step 3 failed" -ForegroundColor Yellow
+    Write-Host "You can retry later with: .\Set-EnvironmentVariables.ps1" -ForegroundColor Gray
 }
 
 # ============================================================================
