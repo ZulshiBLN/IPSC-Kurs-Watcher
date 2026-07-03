@@ -18,7 +18,6 @@ function Invoke-SetAppIdentity {
     param()
 
     $appName = "IPSC Kurs Monitor"
-    $appDescription = "IPSC Course Monitoring and Notifications"
     $regPath = "HKCU:\Software\Classes\CLSID\{12345678-1234-1234-1234-123456789012}"
     $appUserModelId = "IPSC.KursMonitor"
 
@@ -90,36 +89,28 @@ function Invoke-SetEnvironmentVariables {
 
     Write-Host "Setting environment variables..."
 
-    # Check if Tenant ID was already set in previous step
+    # Use Tenant ID from Step 2 if already verified, otherwise ask
     if ($env:IPSC_AZURE_TENANT_ID) {
-        $prompt = "Azure Tenant ID [keep: $($env:IPSC_AZURE_TENANT_ID)]"
-        $tenantId = Read-Host $prompt
-        if (-not $tenantId) {
-            $tenantId = $env:IPSC_AZURE_TENANT_ID
-        }
+        $tenantId = $env:IPSC_AZURE_TENANT_ID
     }
     else {
         $tenantId = Read-Host "Azure Tenant ID (Directory ID)"
-    }
-    if (-not $tenantId) {
-        Write-Host "[ERROR] Tenant ID is required" -ForegroundColor Red
-        return $false
+        if (-not $tenantId) {
+            Write-Host "[ERROR] Tenant ID is required" -ForegroundColor Red
+            return $false
+        }
     }
 
-    # Check if Client ID was already set in previous step
+    # Use Client ID from Step 2 if already verified, otherwise ask
     if ($env:IPSC_AZURE_CLIENT_ID) {
-        $prompt = "Azure Client ID [keep: $($env:IPSC_AZURE_CLIENT_ID)]"
-        $clientId = Read-Host $prompt
-        if (-not $clientId) {
-            $clientId = $env:IPSC_AZURE_CLIENT_ID
-        }
+        $clientId = $env:IPSC_AZURE_CLIENT_ID
     }
     else {
         $clientId = Read-Host "Azure Client ID (Application ID)"
-    }
-    if (-not $clientId) {
-        Write-Host "[ERROR] Client ID is required" -ForegroundColor Red
-        return $false
+        if (-not $clientId) {
+            Write-Host "[ERROR] Client ID is required" -ForegroundColor Red
+            return $false
+        }
     }
 
     $userId = Read-Host "Azure User ID (your email address)"
