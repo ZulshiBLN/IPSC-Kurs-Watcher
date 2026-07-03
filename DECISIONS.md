@@ -381,6 +381,26 @@ function Get-CoursesFromHtml {
 - (-) **Strict:** Can feel constraining initially
 - (-) **Setup:** Pre-commit hook requires configuration
 
+### Implementation Status: ✅ COMPLETE (v0.1.0)
+
+**Hook Details:**
+- **Location:** `.git/hooks/pre-commit.bat` (Windows Batch script)
+- **Trigger:** Runs automatically before every `git commit`
+- **Command:** `build.ps1 -Validate`
+- **Exit Code:** 0 = commit succeeds, 1 = commit blocked
+- **Bypass:** `git commit --no-verify` (NOT RECOMMENDED - breaks quality gate)
+
+**Current Results (v0.1.0):**
+All PSScriptAnalyzer violations fixed and committed:
+- ✅ 4 unapproved verb names corrected (Validate→Test, Mask→Protect, Filter→Get-Filtered)
+- ✅ 3 plural noun violations corrected (Courses→Course, Logs→Log)
+- ✅ 3 Write-Host violations replaced with Write-Information/Write-Output/Write-Error
+- ✅ Empty catch block handling added (CourseMonitor.ps1)
+- ✅ Unused parameters removed (Config.ps1 SchemaPath)
+- ✅ Process blocks added for pipeline-enabled functions (Helpers.ps1)
+- ✅ ShouldProcess support added to state-changing functions (Logging.ps1, State.ps1)
+- **Build Status:** 26 passed, 0 actionable errors
+
 **See Also:**
 - ADR-005: Naming Conventions (detailed rules)
 - ADR-001: PSScriptAnalyzer in dev dependencies

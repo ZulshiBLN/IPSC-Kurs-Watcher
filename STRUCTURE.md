@@ -137,6 +137,73 @@ $state = Get-State -Path $config.state.file_path
 
 ---
 
+## 3a. Build & Validation Script (build.ps1)
+
+**Purpose:** Automated code quality validation before commits
+
+**Location:** Repository root: `./build.ps1`
+
+**Usage:**
+```powershell
+# Full validation (all checks)
+.\build.ps1 -Validate
+
+# Individual checks (if needed)
+.\build.ps1 -PSScriptAnalyzer     # Linting only
+.\build.ps1 -SyntaxCheck          # PowerShell syntax
+.\build.ps1 -JSONValidation       # config.json schema
+```
+
+**What it validates:**
+1. **PSScriptAnalyzer:** Code style, unapproved verbs, naming violations, Write-Host usage, empty catch blocks, ShouldProcess support
+2. **Syntax Validation:** PowerShell parser errors in all .ps1 files
+3. **JSON Validation:** config.json against config.schema.json
+4. **Build Summary:** Pass/fail count + exit code
+
+**Exit Codes:**
+- `0` = All checks passed (commit allowed)
+- `1` = Any check failed (commit blocked)
+
+**When it runs:**
+- **Automatically:** Before each `git commit` (via `.git/hooks/pre-commit.bat`)
+- **Manually:** `.\build.ps1 -Validate` for testing before commit
+
+**Pre-commit Hook Integration:**
+- File: `.git/hooks/pre-commit.bat` (auto-created on first commit)
+- Blocks commits if any validation fails
+- Shows error details with line numbers
+- Can be bypassed with `git commit --no-verify` (NOT RECOMMENDED)
+
+**Example Output (Success):**
+```
+=== PSScriptAnalyzer Linting ===
+[OK] Config.ps1
+[OK] Logging.ps1
+[OK] State.ps1
+[OK] CourseMonitor.ps1
+...
+=== Syntax Validation ===
+[OK] All files
+=== JSON Validation ===
+[OK] config.json
+=== BUILD SUMMARY ===
+Passed: 26
+Failed: 0
+```
+
+**Example Output (Failure):**
+```
+=== PSScriptAnalyzer Linting ===
+[FAIL] CourseMonitor.ps1
+  Line 42: Write-Host is not allowed
+=== BUILD SUMMARY ===
+Passed: 25
+Failed: 1
+[ERROR] Build validation failed!
+```
+
+---
+
 ## 4. Function Structure Requirements
 
 ### PUBLIC Functions (exported, no `_` prefix)

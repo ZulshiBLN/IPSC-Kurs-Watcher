@@ -124,10 +124,69 @@ Automation und Monitoring für IPSC-Kurse mit intelligenter Benachrichtigung und
 ### Context-Management für Claude-Sessions
 
 **Regel 5.1 - Build & Validate vor jedem Commit**
-- Linting-Validierung vor Commit automatisch ausführen
+- Linting-Validierung vor Commit automatisch ausführen (via `.git/hooks/pre-commit.bat`)
 - Hook blockiert Commits mit Linting-Fehlern
 - Fehler müssen vor Commit behoben werden
 - Bei Erfolg: Commit wird erstellt. Bei Fehler: Hook blockiert → Fixen → Retry.
+
+**Hook Installation & Verwendung:**
+
+Hook wird automatisch von Git verwendet (keine Setup nötig). Befindet sich in: `.git/hooks/pre-commit.bat`
+
+**Wie es funktioniert:**
+1. Du tippst: `git commit -m "Fix: something"`
+2. Git lädt automatisch `.git/hooks/pre-commit.bat`
+3. Hook führt aus: `build.ps1 -Validate`
+4. **Wenn erfolgreich:** Commit wird erstellt, Hook gibt Exit Code 0
+5. **Wenn Fehler:** Commit wird BLOCKIERT, Hook zeigt Fehler-Liste
+
+**Beispiel (Success):**
+```
+$ git commit -m "Fix: Remove unused parameter"
+
+[PRE-COMMIT] Running build validation...
+
+=== PSScriptAnalyzer Linting ===
+[OK] Config.ps1
+[OK] Logging.ps1
+[OK] State.ps1
+...
+=== BUILD SUMMARY ===
+Passed: 26
+Failed: 0
+
+[PRE-COMMIT] Validation passed, committing...
+[main a1b2c3d] Fix: Remove unused parameter
+```
+
+**Beispiel (Error - Commit blockiert):**
+```
+$ git commit -m "Add feature"
+
+[PRE-COMMIT] Running build validation...
+
+=== PSScriptAnalyzer Linting ===
+[FAIL] CourseMonitor.ps1
+  Line 42: Write-Host is not allowed
+
+=== BUILD SUMMARY ===
+Passed: 25
+Failed: 1
+
+[PRE-COMMIT] Validation failed, commit blocked
+Fix errors and run: git commit
+```
+
+**Notfall-Bypass (nur wenn Hook zu streng):**
+```bash
+git commit --no-verify -m "Emergency fix"  # Überspringt Hook
+```
+⚠️ **NUR in echten Notfällen verwenden!** Hook ist Qualitäts-Sicherung.
+
+**Troubleshooting:**
+- **Hook läuft nicht?** Prüfe: `ls -la .git/hooks/pre-commit.bat`
+- **"powershell not found"?** Nutze vollständigen Pfad oder PATH setzen
+- **Unerwartete Fehler?** Manual run: `.\build.ps1 -Validate`
 
 **Regel 5.2 - CLAUDE.md aktuell halten**
 Nach Änderungen updaten wenn:
