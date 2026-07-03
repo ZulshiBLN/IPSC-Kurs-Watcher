@@ -324,7 +324,9 @@ function Invoke-SecureWebRequest {
     }
     catch {
         $errorMsg = if ($_.Exception) { $_.Exception.Message } else { $_.ToString() }
+        if (-not $errorMsg) { $errorMsg = $_.FullyQualifiedErrorId }
         $httpStatus = if ($_.Exception.Response) { $_.Exception.Response.StatusCode } else { 'Unknown' }
+        Write-Host "[INVOKE-SECUREWEB-DEBUG] Error: $errorMsg | Status: $httpStatus | Full: $($_)" -ForegroundColor Red
         Write-Log -Level ERROR -Message "Secure web request failed" `
             -Context @{ uri = $Uri; method = $Method; http_status = $httpStatus; error = $errorMsg } -Exception $_
         throw
