@@ -1,0 +1,243 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IPSC Kurs Watcher Configuration",
+  "type": "object",
+  "required": ["version", "monitors", "filters", "notifiers", "state", "logging"],
+
+  "properties": {
+    "version": {
+      "type": "integer",
+      "description": "Config schema version",
+      "minimum": 1
+    },
+
+    "monitors": {
+      "type": "array",
+      "description": "Monitor configurations for different websites",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "provider", "enabled", "url", "base_url"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique monitor identifier"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Provider type (e.g., 'shooting-store')"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether monitor is active"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Target URL to monitor"
+          },
+          "base_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Base URL for constructing detail page links"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "default": 30,
+            "minimum": 1,
+            "description": "HTTP request timeout"
+          },
+          "retry_attempts": {
+            "type": "integer",
+            "default": 3,
+            "minimum": 1,
+            "description": "Number of retry attempts on failure"
+          },
+          "poll_interval_minutes": {
+            "type": "integer",
+            "default": 30,
+            "minimum": 5,
+            "description": "Polling interval in minutes"
+          }
+        }
+      }
+    },
+
+    "filters": {
+      "type": "object",
+      "description": "Filtering rules for courses",
+      "required": ["course_types", "exclude_patterns"],
+      "properties": {
+        "course_types": {
+          "type": "array",
+          "description": "Course type filters",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "patterns"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Filter ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Display name"
+              },
+              "patterns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Match patterns (regex or literal)"
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether filter is active"
+              }
+            }
+          }
+        },
+        "exclude_patterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Patterns to exclude from results"
+        },
+        "min_availability": {
+          "type": "integer",
+          "default": 1,
+          "minimum": 0,
+          "description": "Minimum available slots to alert"
+        }
+      }
+    },
+
+    "notifiers": {
+      "type": "object",
+      "description": "Notification channel configurations",
+      "properties": {
+        "email": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "smtp_host": {
+              "type": "string"
+            },
+            "smtp_port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "from_address": {
+              "type": "string",
+              "format": "email"
+            },
+            "recipients": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "email"
+              }
+            }
+          }
+        },
+        "discord": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "webhook_url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "windows_toast": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+
+    "state": {
+      "type": "object",
+      "description": "State management settings",
+      "required": ["file_path"],
+      "properties": {
+        "file_path": {
+          "type": "string",
+          "description": "Path to state.json file"
+        },
+        "retention_days": {
+          "type": "integer",
+          "default": 30,
+          "minimum": 1,
+          "description": "Days to retain state history"
+        }
+      }
+    },
+
+    "logging": {
+      "type": "object",
+      "description": "Logging configuration",
+      "required": ["log_dir"],
+      "properties": {
+        "log_dir": {
+          "type": "string",
+          "description": "Directory for log files"
+        },
+        "log_level": {
+          "type": "string",
+          "enum": ["DEBUG", "INFO", "WARN", "ERROR"],
+          "default": "INFO",
+          "description": "Minimum log level"
+        },
+        "retention_days": {
+          "type": "integer",
+          "default": 30,
+          "minimum": 1,
+          "description": "Days to retain logs"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["json", "text"],
+          "default": "json",
+          "description": "Log output format"
+        }
+      }
+    },
+
+    "error_handling": {
+      "type": "object",
+      "description": "Error handling and resilience settings",
+      "properties": {
+        "alert_on_repeated_errors": {
+          "type": "boolean",
+          "default": false,
+          "description": "Alert after repeated errors"
+        },
+        "error_threshold": {
+          "type": "integer",
+          "default": 5,
+          "minimum": 1,
+          "description": "Number of errors before alerting"
+        },
+        "error_window_minutes": {
+          "type": "integer",
+          "default": 60,
+          "minimum": 1,
+          "description": "Time window for error counting"
+        }
+      }
+    }
+  }
+}

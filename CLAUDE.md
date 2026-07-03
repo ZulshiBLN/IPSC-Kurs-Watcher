@@ -6,9 +6,9 @@ Automation und Monitoring für IPSC-Kurse mit intelligenter Benachrichtigung und
 
 ## Projekt-Kontext
 
-**Version:** v0.1.0-dev  
-**Status:** [INIT] Infrastruktur-Phase – Setup & Documentation  
-**Sprache/Stack:** [TBD - Python/TypeScript/Rust/Go/...]  
+**Version:** v0.1.0  
+**Status:** [DEVELOPMENT] Modular Refactor – Core + Monitoring + Filters (v0.2: Notifications)  
+**Sprache/Stack:** PowerShell 5.1 (Windows)  
 **Ziel:** Sichere, performante, tokensparende Zusammenarbeit mit Claude
 
 **Wichtige Dokumente:**
@@ -246,14 +246,35 @@ MAJOR.MINOR.PATCH
 
 ## Projekt-spezifische Anpassungen
 
-**[KOMMEN SPÄTER – ABHÄNGIG VON TECH-STACK & ANFORDERUNGEN]**
-
 ### Team & Rollen
-- [TBD: Wer arbeitet daran?]
+- **Solo Developer:** Michel Brosche (Email: google@brosche-bausinger.ch)
+- **Scope:** IPSC Kurs Watcher automation + monitoring
 
 ### Tools & Services
-- [TBD: Welche Platforms/APIs werden verwendet?]
+- **Target Website:** shooting-store.ch (IPSC course catalog)
+- **Version Control:** 
+  - Primary: Azure DevOps (origin)
+  - Secondary: GitHub (github) – Public mirror
+- **Language:** PowerShell 5.1 (Windows-native)
+- **Notifications (v0.1+):** Email (SMTP), Discord (Webhooks), Windows Toast
 
 ### Deployment-Prozess
-- [TBD: Wie kommt Code in Production?]
+- **v0.0.2 (Current MVP):** Manual runs via PowerShell scripts
+  - `.\BasicCourseWatcher.ps1 -RunOnce` (test)
+  - `.\BasicCourseWatcher.ps1` (continuous)
+  
+- **v0.1+ (Planned):**
+  - Windows Scheduled Task (auto-run every 30 minutes)
+  - `.\scripts\Install-ScheduledTask.ps1` (setup)
+  - Logs: `data/logs/watcher-YYYY-MM-DD.log` (daily rotation)
+  
+- **Production Release:**
+  - Via PowerShell Gallery (future, not v0.0.2)
+  - GitHub Releases (manual download)
+
+### Security & Credentials
+- **Secrets:** Via environment variables or Windows Credential Manager (not in code)
+- **Config:** `config/config.json` (user-editable, no hardcoding)
+- **Logs:** Structured JSON with sensitive data masking
+- **SMTP/Webhook passwords:** DPAPI-encrypted in config (v0.1+)
 
