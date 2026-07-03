@@ -493,7 +493,8 @@ function Send-EmailNotification {
         # Get Azure credentials from environment variables
         $tenantId = $env:IPSC_AZURE_TENANT_ID
         $clientId = $env:IPSC_AZURE_CLIENT_ID
-        $userId = $env:IPSC_AZURE_USER_ID
+        $senderEmail = $env:IPSC_EMAIL_SENDER
+        $recipientEmailsStr = $env:IPSC_EMAIL_RECIPIENTS
         $credStorePath = $env:IPSC_CREDENTIAL_STORE_PATH
 
         # Validate required environment variables
@@ -502,8 +503,13 @@ function Send-EmailNotification {
             return
         }
 
-        if (-not $userId) {
-            Write-Log -Level WARN -Message "Email notifier disabled: missing IPSC_AZURE_USER_ID environment variable"
+        if (-not $senderEmail) {
+            Write-Log -Level WARN -Message "Email notifier disabled: missing IPSC_EMAIL_SENDER environment variable"
+            return
+        }
+
+        if (-not $recipientEmailsStr) {
+            Write-Log -Level WARN -Message "Email notifier disabled: missing IPSC_EMAIL_RECIPIENTS environment variable"
             return
         }
 
@@ -541,10 +547,10 @@ function Send-EmailNotification {
         $subject = "IPSC Kurs Watcher - Neue Kurse und Verf" + [char]252 + "gbarkeits" + [char]228 + "nderungen"
 
         # Parse recipient emails (comma-separated list supported)
-        $recipients = @($userId -split ',').Trim() | Where-Object { $_ }
+        $recipients = @($recipientEmailsStr -split ',').Trim() | Where-Object { $_ }
 
-        # Send email with retry logic (userId is the primary user account for sendMail)
-        $sent = _SendMailViaGraph -AccessToken $token.access_token -UserId $userId `
+        # Send email with retry logic (senderEmail is the mailbox account for sendMail)
+        $sent = _SendMailViaGraph -AccessToken $token.access_token -UserId $senderEmail `
             -Recipients $recipients -Subject $subject -HtmlBody $htmlBody `
             -TimeoutSeconds $Config.timeout_seconds -MaxRetries $Config.retry_attempts
 

@@ -337,10 +337,12 @@ MAJOR.MINOR.PATCH
 Required for OAuth2 Azure AD authentication:
 - `IPSC_AZURE_TENANT_ID` – Azure AD Tenant ID
 - `IPSC_AZURE_CLIENT_ID` – Azure AD Application ID  
-- `IPSC_AZURE_USER_ID` – Azure AD User ID for sendMail endpoint
+- `IPSC_EMAIL_SENDER` – Email address for sending notifications (mailbox)
+- `IPSC_EMAIL_RECIPIENTS` – Recipient email addresses (comma-separated list)
 - `IPSC_CREDENTIAL_STORE_PATH` (optional) – Credential store location (default: %APPDATA%\IPSC-Kurs-Watcher\credentials)
+- `IPSC_DISCORD_WEBHOOKS` (optional) – Discord webhook URLs for notifications
 
-Setup: Run `.\scripts\Setup-AzureCredentials.ps1` to set these interactively.
+Setup: Run `.\scripts\Setup.ps1` to set these interactively.
 
 **Other Credentials:**
 - **config.json:** No secrets stored (only non-sensitive fields)

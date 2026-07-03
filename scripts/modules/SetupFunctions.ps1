@@ -113,28 +113,40 @@ function Invoke-SetEnvironmentVariables {
         }
     }
 
-    $userId = Read-Host "Azure User ID (comma-separated emails: user1@example.com,user2@example.com)"
-    if (-not $userId) {
-        Write-Host "[ERROR] User ID is required" -ForegroundColor Red
-        return $false
-    }
-
-    # Validate email format for each address
-    $emails = @($userId -split ',').Trim() | Where-Object { $_ }
-    if ($emails.Count -eq 0) {
-        Write-Host "[ERROR] At least one valid email address is required" -ForegroundColor Red
+    # Sender Email (singular) - the mailbox that sends notifications
+    $senderEmail = Read-Host "Email Sender Address (mailbox for sending notifications)"
+    if (-not $senderEmail) {
+        Write-Host "[ERROR] Sender email is required" -ForegroundColor Red
         return $false
     }
 
     $emailPattern = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    foreach ($email in $emails) {
+    if ($senderEmail -notmatch $emailPattern) {
+        Write-Host "[ERROR] Invalid sender email format: $senderEmail" -ForegroundColor Red
+        return $false
+    }
+
+    # Recipient Emails (comma-separated) - who receives the notifications
+    $recipientEmails = Read-Host "Email Recipient Addresses (comma-separated: user1@example.com,user2@example.com)"
+    if (-not $recipientEmails) {
+        Write-Host "[ERROR] At least one recipient email is required" -ForegroundColor Red
+        return $false
+    }
+
+    $recipients = @($recipientEmails -split ',').Trim() | Where-Object { $_ }
+    if ($recipients.Count -eq 0) {
+        Write-Host "[ERROR] At least one valid recipient email is required" -ForegroundColor Red
+        return $false
+    }
+
+    foreach ($email in $recipients) {
         if ($email -notmatch $emailPattern) {
-            Write-Host "[ERROR] Invalid email format: $email" -ForegroundColor Red
+            Write-Host "[ERROR] Invalid recipient email format: $email" -ForegroundColor Red
             return $false
         }
     }
 
-    $userId = $emails -join ','
+    $recipientEmails = $recipients -join ','
 
     $credStorePath = Read-Host "Credential Store Path (press Enter for default)"
     if (-not $credStorePath) {
@@ -151,8 +163,11 @@ function Invoke-SetEnvironmentVariables {
         [System.Environment]::SetEnvironmentVariable("IPSC_AZURE_CLIENT_ID", $clientId, [System.EnvironmentVariableTarget]::User)
         Write-Host "[OK] IPSC_AZURE_CLIENT_ID set" -ForegroundColor Green
 
-        [System.Environment]::SetEnvironmentVariable("IPSC_AZURE_USER_ID", $userId, [System.EnvironmentVariableTarget]::User)
-        Write-Host "[OK] IPSC_AZURE_USER_ID set" -ForegroundColor Green
+        [System.Environment]::SetEnvironmentVariable("IPSC_EMAIL_SENDER", $senderEmail, [System.EnvironmentVariableTarget]::User)
+        Write-Host "[OK] IPSC_EMAIL_SENDER set" -ForegroundColor Green
+
+        [System.Environment]::SetEnvironmentVariable("IPSC_EMAIL_RECIPIENTS", $recipientEmails, [System.EnvironmentVariableTarget]::User)
+        Write-Host "[OK] IPSC_EMAIL_RECIPIENTS set" -ForegroundColor Green
 
         [System.Environment]::SetEnvironmentVariable("IPSC_CREDENTIAL_STORE_PATH", $credStorePath, [System.EnvironmentVariableTarget]::User)
         Write-Host "[OK] IPSC_CREDENTIAL_STORE_PATH set" -ForegroundColor Green
@@ -182,7 +197,8 @@ function Invoke-RemoveEnvironmentVariables {
     $variables = @(
         "IPSC_AZURE_TENANT_ID",
         "IPSC_AZURE_CLIENT_ID",
-        "IPSC_AZURE_USER_ID",
+        "IPSC_EMAIL_SENDER",
+        "IPSC_EMAIL_RECIPIENTS",
         "IPSC_CREDENTIAL_STORE_PATH",
         "IPSC_DISCORD_WEBHOOKS"
     )
