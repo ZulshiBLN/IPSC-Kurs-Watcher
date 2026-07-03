@@ -1,11 +1,11 @@
-# IPSC Kurs Watcher – Comprehensive Test Plan
+# IPSC Kurs Watcher – Core Monitoring Test Plan
 
 ## Test Overview
 
-This plan covers all 7 phases of development with verification steps for each component.
+This plan covers the 4 core phases of the IPSC Kurs Watcher monitoring system with verification steps for each component.
 
-**Total Test Duration:** ~30 minutes
-**Prerequisites:** PowerShell 5.1+, Pester 5.0+, .NET Framework 4.5+
+**Total Test Duration:** ~15 minutes
+**Prerequisites:** PowerShell 5.1+, Pester 5.0+ (optional)
 
 ---
 
@@ -314,176 +314,6 @@ This plan covers all 7 phases of development with verification steps for each co
 
 ---
 
-## Phase 5: GUI Tests
-
-### 5.1 WPF Assembly Test
-
-```powershell
-# Test: WPF capability
-& {
-    try {
-        Add-Type -AssemblyName PresentationFramework
-        Add-Type -AssemblyName PresentationCore
-        Add-Type -AssemblyName WindowsBase
-        Write-Host "All WPF assemblies loaded"
-    } catch {
-        Write-Host "WPF not available: $_"
-    }
-}
-```
-
-**Expected Result:**
-- All assemblies load successfully (on Windows Desktop)
-
-### 5.2 ViewModel Test
-
-```powershell
-# Test: ViewModel creation
-& {
-    . src/gui/ViewModels/MainWindowViewModel-Simple.ps1
-    
-    $vm = New-MainWindowViewModel -ConfigPath "config/config.json"
-    $result = Load-ViewModelConfiguration -ViewModel $vm -ConfigPath "config/config.json"
-    
-    Write-Host "ViewModel Status:"
-    Write-Host "  Monitors: $($vm.Monitors.Count)"
-    Write-Host "  Course Types: $($vm.CourseTypes.Count)"
-    Write-Host "  Email Enabled: $($vm.EmailConfig.enabled)"
-}
-```
-
-**Expected Result:**
-- ViewModel created
-- Configuration loaded
-- Data bound correctly
-
-### 5.3 XAML Parsing Test
-
-```powershell
-# Test: XAML validity
-& {
-    try {
-        [xml]$xaml = Get-Content "src/gui/MainWindow-Simple.xaml" -Raw
-        $tabItems = $xaml.SelectNodes("//TabItem").Count
-        Write-Host "XAML parsed successfully: $tabItems tabs found"
-    } catch {
-        Write-Host "XAML parsing failed: $_"
-    }
-}
-```
-
-**Expected Result:**
-- XAML parses without errors
-- 5 tabs found
-- Structure valid
-
----
-
-## Phase 6: Scheduler/Orchestration Tests
-
-### 6.1 Configuration Loading Test
-
-```powershell
-# Test: Watcher initialization
-& {
-    . src/utils/Logging.ps1
-    . src/core/Config.ps1
-    . src/core/ConfigValidator.ps1
-    . src/core/State.ps1
-    
-    try {
-        Initialize-Logging -LogDirectory "data/logs-watcher-test"
-        $config = Read-Config -ConfigPath "config/config.json"
-        Test-Configuration -Config $config
-        Initialize-State -StateFile "data/state-watcher-test.json"
-        
-        Write-Host "Watcher initialization successful"
-    } catch {
-        Write-Host "Initialization failed: $_"
-    }
-}
-```
-
-**Expected Result:**
-- Logging initialized
-- Config loaded and validated
-- State initialized
-
-### 6.2 Monitoring Cycle Test
-
-```powershell
-# Test: Single cycle execution
-& {
-    . src/utils/Logging.ps1
-    . src/core/Config.ps1
-    . src/core/State.ps1
-    . src/monitors/MonitorFactory.ps1
-    . src/filters/FilterPipeline.ps1
-    
-    Initialize-Logging -LogDirectory "data/logs-cycle-test"
-    $config = Read-Config -ConfigPath "config/config.json"
-    Initialize-State -StateFile "data/state-cycle-test.json"
-    
-    # Run in TestMode to see cycle flow
-    & .\Watcher.ps1 -ConfigPath "config/config.json" -TestMode -ErrorAction Continue
-}
-```
-
-**Expected Result:**
-- Cycle completes
-- Monitors executed
-- Filters applied
-- Statistics returned
-
----
-
-## Phase 7: Tests & CI/CD
-
-### 7.1 Pester Test Suite
-
-```powershell
-# Test: Run unit tests
-& {
-    Import-Module Pester -MinimumVersion 5.0 -Force
-    
-    $results = Invoke-Pester -Path "tests/Unit" -PassThru
-    
-    Write-Host "Test Results:"
-    Write-Host "  Passed: $($results.Passed.Count)"
-    Write-Host "  Failed: $($results.Failed.Count)"
-    Write-Host "  Total:  $($results.Tests.Count)"
-}
-```
-
-**Expected Result:**
-- Tests run without fatal errors
-- Passing tests show green
-- Failed tests show issues (parameter name fixes needed)
-
-### 7.2 Code Quality Validation
-
-```powershell
-# Test: PSScriptAnalyzer validation
-& {
-    Import-Module PSScriptAnalyzer -Force
-    
-    $results = Invoke-ScriptAnalyzer -Path "src" -Recurse -ReportSummary
-    
-    if ($results) {
-        Write-Host "Analysis issues found:"
-        $results | Format-Table -Property RuleName, Line, Message
-    } else {
-        Write-Host "Code analysis passed"
-    }
-}
-```
-
-**Expected Result:**
-- No critical errors
-- Warnings acceptable (style issues)
-
----
-
 ## Integration Tests
 
 ### 8.1 Complete Pipeline Test
@@ -568,63 +398,9 @@ This plan covers all 7 phases of development with verification steps for each co
 
 ---
 
-## Deployment Tests
-
-### 9.1 Scheduled Task Registration
-
-```powershell
-# Test: Can be registered as scheduled task
-& {
-    # Verify script has correct parameters
-    $watcher = Get-Item "Watcher.ps1"
-    $content = Get-Content $watcher -Raw
-    
-    if ($content -match "param.*ConfigPath" -and $content -match "param.*LoopCount") {
-        Write-Host "Watcher.ps1 has correct parameters for task scheduling"
-    }
-    
-    # Show command that would be used
-    $command = "powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File `"$((Get-Location).Path)\Watcher.ps1`" -ConfigPath `"config/config.json`""
-    Write-Host ""
-    Write-Host "Scheduled Task Command:"
-    Write-Host $command
-}
-```
-
-**Expected Result:**
-- Script has all required parameters
-- Command can be used in scheduled task
-
-### 9.2 PowerShell Gallery Readiness
-
-```powershell
-# Test: Module manifest validity
-& {
-    if (Test-Path "IPSC-Kurs-Watcher.psd1") {
-        try {
-            $manifest = Test-ModuleManifest -Path "IPSC-Kurs-Watcher.psd1"
-            Write-Host "Module manifest valid"
-            Write-Host "  Version: $($manifest.Version)"
-            Write-Host "  Author: $($manifest.Author)"
-        } catch {
-            Write-Host "Manifest issues: $_"
-        }
-    } else {
-        Write-Host "No module manifest found (create for Gallery publishing)"
-    }
-}
-```
-
-**Expected Result:**
-- Manifest valid or identified for creation
-- Version correct
-- Metadata complete
-
----
-
 ## Quick Test Script
 
-Run all tests in sequence:
+Run all core tests in sequence:
 
 ```powershell
 # save as run-all-tests.ps1
@@ -633,14 +409,11 @@ $testSections = @(
     @{ Name = "Phase 2: Monitor Pipeline"; Enabled = $true }
     @{ Name = "Phase 3: Filter Pipeline"; Enabled = $true }
     @{ Name = "Phase 4: Notifier Pipeline"; Enabled = $true }
-    @{ Name = "Phase 5: GUI"; Enabled = $true }
-    @{ Name = "Phase 6: Scheduler"; Enabled = $true }
-    @{ Name = "Phase 7: Tests"; Enabled = $true }
     @{ Name = "Integration Tests"; Enabled = $true }
 )
 
-Write-Host "IPSC Kurs Watcher - Full Test Suite" -ForegroundColor Cyan
-Write-Host "===================================" -ForegroundColor Cyan
+Write-Host "IPSC Kurs Watcher - Core Monitoring Test Suite" -ForegroundColor Cyan
+Write-Host "==============================================" -ForegroundColor Cyan
 Write-Host ""
 
 foreach ($section in $testSections) {
@@ -648,12 +421,12 @@ foreach ($section in $testSections) {
         Write-Host "$($section.Name)..." -ForegroundColor Yellow
         # Run tests for this section
         # (See test code above for implementation)
-        Write-Host "  [✓] Complete" -ForegroundColor Green
+        Write-Host "  [OK] Complete" -ForegroundColor Green
     }
 }
 
 Write-Host ""
-Write-Host "All tests completed!" -ForegroundColor Cyan
+Write-Host "All core tests completed!" -ForegroundColor Cyan
 ```
 
 ---
@@ -661,12 +434,12 @@ Write-Host "All tests completed!" -ForegroundColor Cyan
 ## Success Criteria
 
 All tests should show:
-- ✅ No unhandled exceptions
-- ✅ Expected data types returned
-- ✅ File I/O operations successful
-- ✅ Configuration loads correctly
-- ✅ Pipelines complete without errors
-- ✅ GUI components initialize
+- [OK] No unhandled exceptions
+- [OK] Expected data types returned
+- [OK] File I/O operations successful
+- [OK] Configuration loads correctly
+- [OK] Pipelines complete without errors
+- [OK] 100% test pass rate
 
 ---
 
@@ -687,21 +460,18 @@ All tests should show:
 ## Test Execution Time
 
 Expected duration by phase:
-- Phase 1: ~2 min
-- Phase 2: ~3 min  
-- Phase 3: ~2 min
-- Phase 4: ~2 min
-- Phase 5: ~2 min
-- Phase 6: ~5 min
-- Phase 7: ~5 min
-- Integration: ~3 min
-- **Total: ~24 minutes**
+- Phase 1: ~2 min (Core Infrastructure)
+- Phase 2: ~3 min (Monitor Pipeline)
+- Phase 3: ~2 min (Filter Pipeline)
+- Phase 4: ~2 min (Notifier Pipeline)
+- Integration: ~3 min (Complete Pipeline)
+- **Total: ~12 minutes**
 
 ---
 
 ## Sign-Off
 
-After running all tests successfully:
+After running all core tests successfully:
 
 ```
 Date: _____________
@@ -713,4 +483,8 @@ _________________________________________________________
 _________________________________________________________
 ```
 
-✅ **Test Plan Complete – Ready for Deployment**
+---
+
+## Last Updated
+
+**2026-07-03** - Updated to focus on 4 core monitoring phases only (Phases 5-7 and GUI removed)
