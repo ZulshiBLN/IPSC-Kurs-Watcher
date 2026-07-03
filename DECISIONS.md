@@ -177,7 +177,7 @@ IPSC Kurs Watcher muss shooting-store.ch/de/kategorie/kurse1 monitoren. Anforder
 | **src/utils/Logging.ps1** | Strukturierte Logs | Write-Output, JSON logs |
 | **src/utils/Crypto.ps1** | Secrets verschlüsseln (optional) | DPAPI für SMTP Passwort |
 
-### config.json Template (Flexible & Extensible)
+### config.json Template (Flexible & Extensible with Global Notifications)
 
 ```json
 {
@@ -246,22 +246,43 @@ IPSC Kurs Watcher muss shooting-store.ch/de/kategorie/kurse1 monitoren. Anforder
   "notifiers": {
     "email": {
       "enabled": true,
-      "recipients": ["user@example.com"],
       "smtp_host": "smtp.gmail.com",
       "smtp_port": 587,
       "use_tls": true,
-      "from_address": "watcher@example.com"
+      "smtp_username": "your-email@gmail.com",
+      "smtp_password_encrypted": "[ENCRYPTED_BY_DPAPI]",
+      "from_address": "IPSC-Watcher@example.com",
+      "from_name": "IPSC Kurs Watcher",
+      "recipients": [
+        "user1@example.com",
+        "user2@example.com"
+      ],
+      "subject_template": "[IPSC] Neue Kurse: {course_type}",
+      "retry_attempts": 3,
+      "timeout_seconds": 30
     },
-    "webhook": {
+    "discord": {
       "enabled": true,
-      "url": "https://hooks.slack.com/services/YOUR/WEBHOOK",
-      "timeout_seconds": 10,
-      "retry_attempts": 2
+      "webhook_url": "https://discordapp.com/api/webhooks/YOUR/WEBHOOK",
+      "webhook_url_encrypted": false,
+      "embed_color": 3447003,
+      "mention_roles": [],
+      "retry_attempts": 2,
+      "timeout_seconds": 10
     },
-    "toast": {
+    "windows_toast": {
       "enabled": true,
-      "app_id": "IPSC-Kurs-Watcher"
+      "app_id": "IPSC.Kurs.Watcher",
+      "title_template": "Neue Kurse verfügbar",
+      "sound": "Notification.Default",
+      "duration": "long"
     }
+  },
+  "notification_format": {
+    "include_monitor_name": true,
+    "include_course_type": true,
+    "include_availability": true,
+    "include_link": true
   },
   "state": {
     "file_path": "data/state.json",
@@ -581,36 +602,116 @@ Clear Git workflow ensures coordinated development und saubere releases.
 
 ---
 
-## ADR-010: Configuration & Extensibility
+## ADR-009b: GUI Configuration Management
 
 **Status:** [PENDING]
 
 **Context:**
-IPSC Kurs Watcher sollte konfigurierbar sein für verschiedene Use-Cases (verschiedene Kurse, verschiedene Notifier, verschiedene Schedule).
+Benutzer sollen Websites, Kurs-Filter, und Benachrichtigungseinstellungen ohne Code-Kenntnisse konfigurieren können. Config-Datei manuell editieren ist fehleranfällig und benutzerunfreundlich.
 
 **Decision:**
-[TBD – Config-File basiert empfohlen]
+### **PowerShell WPF-basierte Desktop-GUI** (mit Web-Alternative)
 
-- **Config Format:** YAML oder JSON (user-friendly vs. machine-readable)
-- **Monitors:** Definierbar in Config
-- **Notifiers:** Pluggable, konfigurierbar
-- **Filters:** Customizable Rules für Benachrichtigungen
+**Primary: PowerShell WPF Desktop Application**
+- Native Windows-Integration (kein Runtime needed)
+- XAML-basierte UI
+- Synchrone Validierung
+- System Tray Integration (Scheduler im Hintergrund)
+
+**Alternative: Web-basierte GUI** (für zukünftige Erweiterung)
+- PowerShell HTTP Server (HttpListener)
+- HTML/CSS/JavaScript (Bootstrap + Vue.js)
+- Cross-platform ready
+- Modernere UI/UX
+
+**Funktionen:**
+
+1. **Monitor Management Tab:**
+   - Add/Edit/Delete Websites
+   - URL, Poll-Interval, Parser-Config (CSS-Selektoren)
+   - Test-Button (Live-Scraping mit Preview)
+   - Enable/Disable Toggle
+
+2. **Filter Management Tab:**
+   - Course Types definieren (Pattern-Matching)
+   - Per-Monitor Filter konfigurieren
+   - Exclusion Patterns
+   - Test: Show matching courses
+
+3. **Notifications (Global Settings):**
+   - Email: SMTP Server, Port, Auth (Username/Password), TLS, Sender, Recipients
+   - Discord: Webhook URL
+   - Windows Toast: Enable/Disable
+   - Test-Button: Send test notification
+
+4. **Scheduler Control:**
+   - Start/Stop Watcher
+   - Poll-Intervall global ändern
+   - View last run status
+   - View logs (real-time tail)
+
+5. **Data Management:**
+   - Export Config
+   - Import Config
+   - Reset to Defaults
+   - Backup State
+
+**Consequences:**
+- (+) Benutzerfreundlich für non-technical users
+- (+) Validierung in GUI (fehlerhafte Config impossible)
+- (+) Live-Preview (Test-Buttons für Scraping & Notifier)
+- (+) Native Windows Integration (System Tray, scheduled task)
+- (+) No manual JSON editing needed
+- (-) GUI Code-Komplexität
+- (-) WPF/XAML Lernkurve
+- (-) Mehr Abhängigkeiten (WPF Framework)
+
+**Alternatives:**
+- Manual config.json editing (einfach, aber error-prone)
+- Web-GUI (more complex, aber zukunftssicherer)
+- PowerShell Universal (commercial)
+
+**Implementation Notes:**
+- See STRUCTURE.md Section 11 (GUI Architecture)
+- WPF: src/gui/MainWindow.xaml + MainWindow.ps1
+- Config validation on every change
+- Secrets encrypted in config (DPAPI)
+
+---
+
+## ADR-010: Configuration & Extensibility
+
+**Status:** [ACCEPTED]
+
+**Context:**
+IPSC Kurs Watcher sollte konfigurierbar sein für verschiedene Use-Cases ohne Code-Änderungen.
+
+**Decision:**
+- **Config Format:** JSON (maschinenlesbar, schema-validierbar)
+- **Config Storage:** JSON-Datei + optional GUI Abstraktionslayer
+- **Monitors:** Definierbar in config.monitors[]
+- **Notifiers:** Global konfiguriert (gelten für alle Monitors)
+- **Filters:** Pro Monitor + global definierbar
+- **Secrets:** DPAPI-verschlüsselt (Windows Data Protection API)
 
 **Consequences:**
 - (+) Einfach neue Use-Cases hinzufügen
 - (+) No code changes für neue Monitors/Notifiers
-- (+) User-friendly
-- (-) Config-Validation nötig
-- (-) Mehr Code/Komplexität
+- (+) Version-control friendly (JSON in git)
+- (+) GUI abstrahiert Komplexität
+- (-) JSON-Schema Validierung nötig
+- (-) Secrets Management erforderlich
 
 **Alternatives:**
-- Hardcoded config (einfach, aber inflexibel)
-- Fully programmatic (hard für non-developers)
+- Registry (Windows-only, nicht portable)
+- INI-Dateien (weniger strukturiert)
+- Datenbank (overkill für dieses Use-Case)
 
 **Implementation Notes:**
-- Config Schema validieren beim Start
-- Gute Fehler-Messages wenn Config invalid
-- Config-Beispiele in `examples/` Verzeichnis
+- Config: `config/config.json` (user-editable oder via GUI)
+- Schema: `config/config.schema.json` (Validierung)
+- Secrets: DPAPI encryption für Passwörter
+- GUI: WPF MainWindow mit Tabs (Monitors, Filters, Notifications, Scheduler)
 
 ---
 

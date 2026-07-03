@@ -14,7 +14,27 @@ IPSC-Kurs-Watcher/
 │   ├── core/
 │   │   ├── Scheduler.ps1         # Main orchestration loop
 │   │   ├── Config.ps1            # Load & validate config.json
-│   │   └── State.ps1             # State management (JSON persistence)
+│   │   ├── State.ps1             # State management (JSON persistence)
+│   │   └── ConfigValidator.ps1   # JSON schema validation
+│   ├── gui/
+│   │   ├── ConfigApp.ps1         # Main GUI entry point (WPF host)
+│   │   ├── MainWindow.xaml       # WPF UI definition (XAML)
+│   │   ├── MainWindow.ps1        # WPF code-behind logic
+│   │   ├── Views/
+│   │   │   ├── MonitorsTab.xaml          # Add/Edit/Delete Monitors
+│   │   │   ├── FiltersTab.xaml           # Configure Course Types
+│   │   │   ├── NotificationsTab.xaml     # Email, Discord, Toast settings
+│   │   │   ├── SchedulerTab.xaml         # Start/Stop, View Logs
+│   │   │   └── DataTab.xaml              # Export/Import/Backup
+│   │   ├── ViewModels/
+│   │   │   ├── MonitorsViewModel.ps1
+│   │   │   ├── FiltersViewModel.ps1
+│   │   │   ├── NotificationsViewModel.ps1
+│   │   │   └── SchedulerViewModel.ps1
+│   │   └── Services/
+│   │       ├── ConfigService.ps1         # Load/Save config via GUI
+│   │       ├── ValidatorService.ps1      # Real-time validation
+│   │       └── TestService.ps1           # Test Scraping + Notifications
 │   ├── monitors/
 │   │   ├── MonitorBase.ps1       # Abstract base class (common logic)
 │   │   ├── MonitorFactory.ps1    # Factory: route provider → Monitor
@@ -25,11 +45,12 @@ IPSC-Kurs-Watcher/
 │   │   └── FilterByExclusion.ps1 # Exclusion pattern filtering
 │   ├── notifiers/
 │   │   ├── NotifyEmail.ps1       # SMTP email notification
-│   │   ├── NotifyWebhook.ps1     # HTTP webhook (Slack, Discord, etc.)
+│   │   ├── NotifyDiscord.ps1     # Discord webhook notification
 │   │   └── NotifyToast.ps1       # Windows Toast notification
 │   └── utils/
 │       ├── Logging.ps1           # Structured logging (JSON)
-│       ├── Crypto.ps1            # Secret encryption (DPAPI) - optional
+│       ├── Crypto.ps1            # Secret encryption (DPAPI)
+│       ├── Secrets.ps1           # Secure password storage/retrieval
 │       └── Helpers.ps1           # Common utilities
 ├── config/
 │   ├── config.json               # Main configuration (user edits this)
@@ -564,16 +585,167 @@ import { loadConfig } from './config.js';
 
 ---
 
+## 11. GUI ARCHITECTURE & USER INTERFACE
+
+### 11.1 - WPF Application Structure
+
+**Technology:** PowerShell WPF (XAML + PowerShell Code-Behind)
+
+**Main Components:**
+
+1. **ConfigApp.ps1 (Entry Point)**
+   - Initializes WPF host
+   - Loads XAML
+   - Wires up ViewModels to Views
+   - Handles app lifecycle
+
+2. **MainWindow.xaml (Main UI Container)**
+   - Tabbed Interface:
+     - Tab 1: Monitors (Add/Edit/Delete/Test)
+     - Tab 2: Filters (Course Types, Patterns)
+     - Tab 3: Notifications (Email, Discord, Toast settings)
+     - Tab 4: Scheduler (Start/Stop, View Logs)
+     - Tab 5: Data (Export/Import/Backup)
+   - Status Bar (Last run, Next run, Status)
+   - System Tray Icon
+
+3. **MVVM Pattern**
+   - Views: UI (XAML)
+   - ViewModels: Business Logic (PowerShell)
+   - Services: Data Access (Config, Validation, Testing)
+   - Binding: View ↔ ViewModel (two-way binding)
+
+### 11.2 - Tab Details
+
+**Tab 1: Monitors**
+- List of configured monitors
+- Buttons: Add, Edit, Delete, Test, Enable/Disable
+- Edit Dialog: URL, Poll Interval, Parser Config (CSS Selectors)
+- Test Button: Preview live scraping results
+- Visual feedback: Success/Error status
+
+**Tab 2: Filters (Course Types)**
+- Per-monitor course type configuration
+- Global default course types
+- Pattern Matching (e.g., "Basic" matches "Basic", "basics", "beginner-basic")
+- Add/Edit/Delete patterns
+- Test: Show which courses match selected types
+
+**Tab 3: Notifications (Global Settings)**
+- **Email Section:**
+  - SMTP Server (e.g., smtp.gmail.com)
+  - SMTP Port (587, 465, 25)
+  - Username & Password (encrypted with DPAPI)
+  - TLS/SSL toggle
+  - Sender Address & Name
+  - Recipients List (add/remove multiple)
+  - Test Button: Send test email
+  
+- **Discord Section:**
+  - Webhook URL (password field for security)
+  - Color Picker (embed color)
+  - Mention Roles/Users (optional)
+  - Test Button: Send test message
+  
+- **Windows Toast Section:**
+  - Enable/Disable toggle
+  - App ID
+  - Sound selection
+  - Duration (short/long)
+
+**Tab 4: Scheduler**
+- Start/Stop Watcher button (toggles Scheduled Task)
+- Current Status (Running/Stopped)
+- Last Run: Timestamp, Status, Courses found
+- Next Run: Estimated time
+- Real-time Log Viewer (tail last 50 lines)
+- Auto-refresh (every 5 seconds)
+
+**Tab 5: Data**
+- Export Config (save config.json + state.json)
+- Import Config (load from backup)
+- Reset to Defaults (confirm dialog)
+- Backup Management (list/restore backups)
+- Clear State (reset course history)
+
+### 11.3 - Security & Secrets
+
+**Password Encryption:**
+- DPAPI (Data Protection API) for storing sensitive data
+- Passwords encrypted at rest in config.json
+- Decryption happens only in-memory during use
+- First-time setup: User enters SMTP password, encrypted for storage
+
+**Implementation:**
+```powershell
+# src/utils/Secrets.ps1
+function Protect-SecretData {
+  param([string]$PlainText)
+  $Bytes = [System.Text.Encoding]::UTF8.GetBytes($PlainText)
+  $EncryptedBytes = [System.Security.Cryptography.DataProtectionScope]::CurrentUser |
+    ConvertTo-SecureString -AsPlainText -Force |
+    ConvertFrom-SecureString
+  return $EncryptedBytes
+}
+
+function Unprotect-SecretData {
+  param([string]$EncryptedData)
+  # Decrypt only in-memory
+}
+```
+
+### 11.4 - Validation & Error Handling
+
+**Real-time Validation:**
+- SMTP credentials: Test connection on blur
+- Discord webhook: Validate URL format & reachability
+- Course type patterns: Show regex validation errors
+- Email recipients: Validate format
+- Monitor URLs: Validate URL format
+
+**Error Dialogs:**
+- Network errors: "Could not connect to SMTP server"
+- Validation errors: "Invalid email format"
+- Config errors: "Duplicate monitor ID"
+- Show actionable error messages
+
+### 11.5 - Testing Within GUI
+
+**Test Buttons:**
+
+1. **Monitor Test:**
+   - Fetch courses from website (one-time, not persisted)
+   - Show preview with:
+     - Course Title, Type, Availability
+     - Which courses would be filtered
+     - Success/Error status
+
+2. **Email Test:**
+   - Send test email to primary recipient
+   - Subject: "[TEST] IPSC Kurs Watcher Notification"
+   - Confirm send status in dialog
+
+3. **Discord Test:**
+   - Send test message to webhook
+   - Show embed format preview
+   - Confirm post status
+
+4. **Course Filter Test:**
+   - Preview which courses match selected types
+   - Show before/after filter results
+
+---
+
 ## Status: Project Infrastructure [INIT]
 
 **Completion Status:**
 
-- [ ] Core architecture documented
-- [ ] Code standards defined
-- [ ] Testing strategy established
+- [x] Core architecture documented (ADRs 001-010)
+- [x] Code standards defined (STRUCTURE.md)
+- [x] Testing strategy established (TBD: Pester)
+- [ ] GUI architecture documented (DONE in STRUCTURE.md 11)
 - [ ] CI/CD pipeline configured
 - [ ] Deployment automation
-- [ ] Monitoring & alerts
 
-**Overall Grade:** [TBD]
+**Overall Grade:** Ready for Phase 1 Implementation
 
