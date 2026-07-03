@@ -8,20 +8,15 @@ function Test-ToastSupported {
     .OUTPUTS
     Boolean - $true if Toast API available, $false otherwise
     #>
-    try {
-        $osVersion = [System.Environment]::OSVersion.Version
-        if ($osVersion.Major -lt 10) {
-            Write-Log -Level WARN -Message "Toast not supported on Windows < 10" `
-                -Context @{ version = "$($osVersion.Major).$($osVersion.Minor)" }
-            return $false
-        }
+    if ([System.Environment]::OSVersion.Version.Major -lt 10) {
+        return $false
+    }
 
-        [void] [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null
+    try {
+        $null = [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
         return $true
     }
     catch {
-        Write-Log -Level WARN -Message "Toast API not available" `
-            -Context @{ error = $_.Exception.Message }
         return $false
     }
 }
@@ -109,16 +104,16 @@ function _NewToastBody {
 function _NewToastXML {
     <#
     .SYNOPSIS
-    Build Windows Toast XML with title, body, sound, and action.
+    Build Windows Toast XML with title, body, sound, and action buttons.
 
     .PARAMETER Title
     Toast title text
 
     .PARAMETER Body
-    Toast body text
+    Toast body text (with course details)
 
     .PARAMETER ActionUrl
-    URL to open when Toast is clicked
+    URL to display in body (included as text)
 
     .PARAMETER SoundEnabled
     Whether to play notification sound
@@ -134,8 +129,8 @@ function _NewToastXML {
     )
 
     $escapedTitle = [System.Security.SecurityElement]::Escape($Title)
-    $escapedBody = [System.Security.SecurityElement]::Escape($Body)
     $escapedUrl = [System.Security.SecurityElement]::Escape($ActionUrl)
+    $bodyWithUrl = [System.Security.SecurityElement]::Escape("$Body`n`nURL: $ActionUrl")
 
     $audio = if ($SoundEnabled) {
         '<audio src="ms-winsoundevent:Notification.Default"/>'
@@ -149,12 +144,13 @@ function _NewToastXML {
   <visual>
     <binding template="ToastText02">
       <text id="1">$escapedTitle</text>
-      <text id="2">$escapedBody</text>
+      <text id="2">$bodyWithUrl</text>
     </binding>
   </visual>
   $audio
   <actions>
-    <action activationType="protocol" arguments="$escapedUrl" content="View Courses"/>
+    <action activationType="protocol" arguments="$escapedUrl" content="View Course"/>
+    <action activationType="system" arguments="dismiss" content="Dismiss"/>
   </actions>
 </toast>
 "@
