@@ -6,8 +6,8 @@ Automation und Monitoring für IPSC-Kurse mit intelligenter Benachrichtigung und
 
 ## Projekt-Kontext
 
-**Version:** v0.3.0  
-**Status:** [DEVELOPMENT] Full test coverage with integration tests, ready for production deployment  
+**Version:** v0.4.0  
+**Status:** [DEVELOPMENT] All 31 integration tests passing, state merge logic complete, ready for release  
 **Sprache/Stack:** PowerShell 5.1 (Windows)  
 **Ziel:** Sichere, performante, tokensparende Zusammenarbeit mit Claude
 

@@ -287,7 +287,7 @@ Describe "IPSC Kurs Watcher Integration Pipeline" {
 
             # Should have only courses with 5+ availability
             foreach ($course in $filtered) {
-                $course.availability | Should -BeGreaterThanOrEqual 5
+                $course.availability | Should -BeGreaterOrEqual 5
             }
         }
     }

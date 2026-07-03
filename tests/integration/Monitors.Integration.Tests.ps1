@@ -105,7 +105,7 @@ Describe "CourseMonitor Integration" {
             $config = Get-Config -ConfigPath $script:configFixture
 
             $config.monitors[0].timeout_seconds | Should -BeGreaterThan 0
-            $config.monitors[0].timeout_seconds | Should -BeLessThanOrEqual 300
+            $config.monitors[0].timeout_seconds | Should -BeLessOrEqual 300
         }
     }
 

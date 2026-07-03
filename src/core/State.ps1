@@ -139,7 +139,7 @@ function Merge-CourseState {
 
     # 1. Process all CURRENT courses (what website shows)
     foreach ($current in $CurrentCourses) {
-        $courseId = "$($current.name)|$($current.date)|$($current.time)"
+        $courseId = if ($current.id) { $current.id } else { "$($current.name)|$($current.date)|$($current.time)" }
         $tracked = $TrackedCourses | Where-Object { $_.id -eq $courseId }
 
         if ($tracked) {
@@ -196,7 +196,10 @@ function Merge-CourseState {
     # 2. Process all TRACKED courses not in CURRENT (disappeared)
     foreach ($tracked in $TrackedCourses) {
         $courseId = $tracked.id
-        $current = $CurrentCourses | Where-Object { "$($_.name)|$($_.date)|$($_.time)" -eq $courseId }
+        $current = $CurrentCourses | Where-Object {
+            $currentId = if ($_.id) { $_.id } else { "$($_.name)|$($_.date)|$($_.time)" }
+            $currentId -eq $courseId
+        }
 
         if (-not $current) {
             # Course was tracked but is NO LONGER on website
