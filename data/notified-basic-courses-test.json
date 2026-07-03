@@ -1,0 +1,13 @@
+﻿{
+    "notified_courses":  [
+                             {
+                                 "fetched_at":  "2026-07-03T12:20:49.8163199Z",
+                                 "name":  "IPSC Basic 2.0 Course 05.09.2026 09:30-13:00"
+                             },
+                             {
+                                 "fetched_at":  "2026-07-03T12:20:49.8193836Z",
+                                 "name":  "IPSC Basic 2.0 Course 08.08.2026 09:30-13:00"
+                             }
+                         ],
+    "last_check":  "2026-07-03T12:20:49.8674604Z"
+}
