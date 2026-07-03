@@ -90,13 +90,33 @@ function Invoke-SetEnvironmentVariables {
 
     Write-Host "Setting environment variables..."
 
-    $tenantId = Read-Host "Azure Tenant ID (Directory ID)"
+    # Check if Tenant ID was already set in previous step
+    if ($env:IPSC_AZURE_TENANT_ID) {
+        $prompt = "Azure Tenant ID [keep: $($env:IPSC_AZURE_TENANT_ID)]"
+        $tenantId = Read-Host $prompt
+        if (-not $tenantId) {
+            $tenantId = $env:IPSC_AZURE_TENANT_ID
+        }
+    }
+    else {
+        $tenantId = Read-Host "Azure Tenant ID (Directory ID)"
+    }
     if (-not $tenantId) {
         Write-Host "[ERROR] Tenant ID is required" -ForegroundColor Red
         return $false
     }
 
-    $clientId = Read-Host "Azure Client ID (Application ID)"
+    # Check if Client ID was already set in previous step
+    if ($env:IPSC_AZURE_CLIENT_ID) {
+        $prompt = "Azure Client ID [keep: $($env:IPSC_AZURE_CLIENT_ID)]"
+        $clientId = Read-Host $prompt
+        if (-not $clientId) {
+            $clientId = $env:IPSC_AZURE_CLIENT_ID
+        }
+    }
+    else {
+        $clientId = Read-Host "Azure Client ID (Application ID)"
+    }
     if (-not $clientId) {
         Write-Host "[ERROR] Client ID is required" -ForegroundColor Red
         return $false
