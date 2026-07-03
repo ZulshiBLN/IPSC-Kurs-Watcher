@@ -1,91 +1,76 @@
-﻿{
-    "version":  1,
-    "monitors":  [
-                     {
-                         "id":  "shooting-store",
-                         "provider":  "shooting-store",
-                         "enabled":  true,
-                         "url":  "https://www.shooting-store.ch/de/kategorie/kurse1",
-                         "base_url":  "https://www.shooting-store.ch",
-                         "timeout_seconds":  30,
-                         "retry_attempts":  3,
-                         "poll_interval_minutes":  30
-                     }
-                 ],
-    "filters":  {
-                    "course_types":  [
-                                         {
-                                             "id":  "tryout",
-                                             "name":  "Tryout",
-                                             "patterns":  [
-                                                              "Tryout",
-                                                              "Einsteiger-Kurs"
-                                                          ],
-                                             "enabled":  true
-                                         },
-                                         {
-                                             "id":  "basic",
-                                             "name":  "Basic Level",
-                                             "patterns":  [
-                                                              "Basic",
-                                                              "AnfÃ¤nger",
-                                                              "Level 1"
-                                                          ],
-                                             "enabled":  true
-                                         },
-                                         {
-                                             "id":  "basic2",
-                                             "name":  "Basic 2.0",
-                                             "patterns":  [
-                                                              "Basic 2.0",
-                                                              "Basic 2.x",
-                                                              "Level 2"
-                                                          ],
-                                             "enabled":  true
-                                         }
-                                     ],
-                    "exclude_patterns":  [
-                                             "Privatunterricht",
-                                             "VIP-Kurs",
-                                             "Geschlossen"
-                                         ],
-                    "min_availability":  1
-                },
-    "notifiers":  {
-                      "windows_toast":  {
-                                            "enabled":  true,
-                                            "sound_enabled":  true,
-                                            "group_by_type":  true,
-                                            "max_courses_per_group":  5,
-                                            "auto_dismiss_seconds":  5,
-                                            "main_page_url":  "https://www.shooting-store.ch/de/kategorie/kurse1"
-                                        },
-                      "email":  {
-                                    "enabled":  true,
-                                    "provider":  "graph",
-                                    "token_cache_path":  "data/.token_cache.json",
-                                    "timeout_seconds":  30,
-                                    "retry_attempts":  3
-                                },
-                      "discord":  {
-                                      "enabled":  false,
-                                      "retry_attempts":  3,
-                                      "timeout_seconds":  30
-                                  }
-                  },
-    "state":  {
-                  "file_path":  "data/state.json",
-                  "retention_days":  30
-              },
-    "logging":  {
-                    "log_dir":  "data/logs",
-                    "log_level":  "INFO",
-                    "retention_days":  30,
-                    "format":  "json"
-                },
-    "error_handling":  {
-                           "alert_on_repeated_errors":  false,
-                           "error_threshold":  5,
-                           "error_window_minutes":  60
-                       }
+{
+  "version": 1,
+  "monitors": [
+    {
+      "id": "shooting-store",
+      "provider": "shooting-store",
+      "enabled": true,
+      "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
+      "base_url": "https://www.shooting-store.ch",
+      "timeout_seconds": 30,
+      "retry_attempts": 3,
+      "poll_interval_minutes": 30
+    }
+  ],
+  "filters": {
+    "course_types": [
+      {
+        "id": "tryout",
+        "name": "Tryout",
+        "patterns": ["Tryout", "Einsteiger-Kurs"],
+        "enabled": true
+      },
+      {
+        "id": "basic",
+        "name": "Basic Level",
+        "patterns": ["Basic", "Anfänger", "Level 1"],
+        "enabled": true
+      },
+      {
+        "id": "basic2",
+        "name": "Basic 2.0",
+        "patterns": ["Basic 2.0", "Basic 2.x", "Level 2"],
+        "enabled": true
+      }
+    ],
+    "exclude_patterns": ["Privatunterricht", "VIP-Kurs", "Geschlossen"],
+    "min_availability": 1
+  },
+  "notifiers": {
+    "windows_toast": {
+      "enabled": true,
+      "sound_enabled": true,
+      "group_by_type": true,
+      "max_courses_per_group": 5,
+      "auto_dismiss_seconds": 5,
+      "main_page_url": "https://www.shooting-store.ch/de/kategorie/kurse1"
+    },
+    "email": {
+      "enabled": true,
+      "provider": "graph",
+      "token_cache_path": "data/.token_cache.json",
+      "timeout_seconds": 30,
+      "retry_attempts": 3
+    },
+    "discord": {
+      "enabled": false,
+      "retry_attempts": 3,
+      "timeout_seconds": 30
+    }
+  },
+  "state": {
+    "file_path": "data/state.json",
+    "retention_days": 30
+  },
+  "logging": {
+    "log_dir": "data/logs",
+    "log_level": "INFO",
+    "retention_days": 30,
+    "format": "json"
+  },
+  "error_handling": {
+    "alert_on_repeated_errors": false,
+    "error_threshold": 5,
+    "error_window_minutes": 60
+  }
 }

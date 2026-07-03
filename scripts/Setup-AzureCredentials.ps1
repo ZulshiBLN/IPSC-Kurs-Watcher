@@ -155,26 +155,6 @@ catch {
     exit 1
 }
 
-Write-Header "Updating Configuration (non-sensitive)"
-
-try {
-    $config = Get-Content -Path $ConfigPath -Raw | ConvertFrom-Json
-    $config.notifiers.email = @{
-        enabled                = $true
-        provider               = "graph"
-        recipients             = @("michel@brosche-swiss.ch")
-        retry_attempts         = 3
-        timeout_seconds        = 30
-        token_cache_path       = "data/.token_cache.json"
-    }
-    $config | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -Encoding UTF8
-    Write-Success "config.json updated (credentials via environment variables)"
-}
-catch {
-    Write-Error-Custom "Failed to update config.json: $_"
-    exit 1
-}
-
 Write-Header "Setup Verification"
 
 Write-Host "Tenant ID:        $tenantId" -ForegroundColor Gray
