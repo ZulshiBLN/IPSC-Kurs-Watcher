@@ -82,9 +82,9 @@ if (-not $secureSecret -or $secureSecret.Length -eq 0) {
 }
 
 try {
-    $clientSecret = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
-        [System.Runtime.InteropServices.Marshal]::SecureStringToCoTaskMemUni($secureSecret)
-    )
+    $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToCoTaskMemUnicode($secureSecret)
+    $clientSecret = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($ptr)
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeCoTaskMemUnicode($ptr)
 }
 catch {
     Write-Error-Custom "Failed to process Client Secret: $_"
