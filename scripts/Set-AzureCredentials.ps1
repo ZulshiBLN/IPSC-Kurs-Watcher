@@ -1,4 +1,4 @@
-﻿Add-Type -AssemblyName System.Security
+Add-Type -AssemblyName System.Security
 Add-Type -AssemblyName System.Web
 
 $ConfigPath = "config/config.json"
@@ -56,7 +56,7 @@ function _TestAzureConnection {
     }
 }
 
-Write-Header "Azure AD OAuth2 Setup for IPSC Kurs Watcher"
+Write-Header "Azure AD OAuth2 Configuration for IPSC Kurs Watcher"
 
 if (-not [System.IO.Path]::IsPathRooted($ConfigPath)) {
     $scriptRoot = Split-Path $MyInvocation.MyCommand.Path
@@ -155,7 +155,7 @@ catch {
     exit 1
 }
 
-Write-Header "Setup Verification"
+Write-Header "Configuration Verification"
 
 Write-Host "Tenant ID:        $tenantId" -ForegroundColor Gray
 Write-Host "Client ID:        $clientId" -ForegroundColor Gray
@@ -164,7 +164,7 @@ Write-Host "Config Path:      $ConfigPath" -ForegroundColor Gray
 Write-Host "Credential Store: $credentialFile" -ForegroundColor Gray
 Write-Host ""
 
-Write-Success "Setup completed successfully!"
+Write-Success "Configuration completed successfully!"
 
 Write-Header "Persist Environment Variables (Recommended)"
 
