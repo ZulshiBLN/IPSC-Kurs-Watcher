@@ -77,7 +77,24 @@ Test-Component "Monitor Factory" {
     . src/core/Config.ps1
     . src/monitors/MonitorFactory.ps1
     $config = Read-Config -ConfigPath "config/config.json"
-    $monitor = $config.monitors[0]
+    $monitorObj = $config.monitors[0]
+    $parserConfigHashtable = @{}
+    if ($null -ne $monitorObj.parser_config) {
+        $monitorObj.parser_config.PSObject.Properties | ForEach-Object {
+            $parserConfigHashtable[$_.Name] = $_.Value
+        }
+    }
+    $monitor = @{
+        id = $monitorObj.id
+        name = $monitorObj.name
+        provider = $monitorObj.provider
+        url = $monitorObj.url
+        poll_interval_minutes = $monitorObj.poll_interval_minutes
+        enabled = $monitorObj.enabled
+        request_timeout_seconds = $monitorObj.request_timeout_seconds
+        retry_attempts = $monitorObj.retry_attempts
+        parser_config = $parserConfigHashtable
+    }
     $factory = New-Monitor -Config $monitor
     $null -ne $factory
 }
@@ -111,7 +128,8 @@ Test-Component "Exclusion Filter" {
     $excludePatterns = if ($null -eq $config.filters.exclude_patterns) { @() } else { $config.filters.exclude_patterns }
     $filter = New-ExclusionFilter -ExcludePatterns $excludePatterns
     $filtered = Invoke-FilterByExclusion -Courses $testCourses -Filter $filter
-    $filtered.Count -lt $testCourses.Count
+    $filteredCount = @($filtered).Count
+    $filteredCount -lt $testCourses.Count
 }
 
 Test-Component "Deduplicator" {
@@ -126,7 +144,7 @@ Test-Component "Deduplicator" {
     )
     $dedup = New-Deduplicator -State $state -MinAvailability 1
     $filtered = Invoke-Deduplication -Courses $testCourses -Deduplicator $dedup
-    $filtered.Count -eq 1
+    @($filtered).Count -eq 1
 }
 
 # ============================================================================
@@ -207,7 +225,9 @@ Test-Component "ViewModel" {
 
 Test-Component "XAML Parsing" {
     [xml]$xaml = Get-Content "src/gui/MainWindow-Simple.xaml" -Raw
-    $tabCount = $xaml.SelectNodes("//TabItem").Count
+    $ns = New-Object Xml.XmlNamespaceManager($xaml.NameTable)
+    $ns.AddNamespace("x", "http://schemas.microsoft.com/winfx/2006/xaml/presentation")
+    $tabCount = $xaml.SelectNodes("//x:TabItem", $ns).Count
     $tabCount -gt 0
 }
 
