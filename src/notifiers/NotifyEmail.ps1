@@ -231,7 +231,7 @@ function _BuildEmailBody {
     <div class="container">
         <div class="header">
             <h1>IPSC Kurs Watcher</h1>
-            <p>Neue Kurse und Verfügbarkeitsänderungen</p>
+            <p>Neue Kurse und Verf&uuml;gbarkeits&auml;nderungen</p>
         </div>
 "@
 
@@ -249,7 +249,7 @@ function _BuildEmailBody {
 
         $title = switch ($reason) {
             'NEW' { 'Neue Kurse' }
-            'AVAILABILITY_REDUCED' { 'Verfügbarkeit reduziert' }
+            'AVAILABILITY_REDUCED' { 'Verf&uuml;gbarkeit reduziert' }
             'SOLD_OUT' { 'Ausgebucht' }
             default { 'Kurse' }
         }
@@ -264,7 +264,7 @@ function _BuildEmailBody {
             <div class="course">
                 <div class="course-name">$([System.Web.HttpUtility]::HtmlEncode($alert.name))</div>
                 <div class="course-detail">Datum: $([System.Web.HttpUtility]::HtmlEncode($alert.date)) | Zeit: $([System.Web.HttpUtility]::HtmlEncode($alert.time))</div>
-                <div class="course-detail">Verfügbarkeit: $($alert.availability) Plätze | Preis: $([System.Web.HttpUtility]::HtmlEncode($alert.price))</div>
+                <div class="course-detail">Verf&uuml;gbarkeit: $($alert.availability) Pl&auml;tze | Preis: $([System.Web.HttpUtility]::HtmlEncode($alert.price))</div>
                 <a href="$([System.Web.HttpUtility]::HtmlEncode($alert.url))" class="course-link">Kurs anschauen</a>
             </div>
 "@
@@ -326,14 +326,15 @@ function _SendMailViaGraph {
 
             $headers = @{
                 Authorization  = "Bearer $AccessToken"
-                "Content-Type"  = "application/json"
+                "Content-Type"  = "application/json; charset=utf-8"
             }
 
             $jsonBody = $payload | ConvertTo-Json -Depth 10
+            $jsonBodyBytes = [System.Text.Encoding]::UTF8.GetBytes($jsonBody)
 
             $sendMailUri = "https://graph.microsoft.com/v1.0/users/$UserId/sendMail"
             Invoke-WebRequest -Uri $sendMailUri -Method POST `
-                -Headers $headers -Body $jsonBody -UseBasicParsing `
+                -Headers $headers -Body $jsonBodyBytes -UseBasicParsing `
                 -TimeoutSec $TimeoutSeconds -ErrorAction Stop | Out-Null
 
             Write-Log -Level INFO -Message "Email sent successfully" `
@@ -507,8 +508,10 @@ function Send-EmailNotification {
         }
 
         # Build email
-        $subject = "IPSC Kurs Watcher - Neue Kurse und Verfügbarkeitsänderungen"
         $htmlBody = _BuildEmailBody -Alerts $Alerts
+
+        # Create subject with proper UTF-8 encoding for special characters (ü=252, ä=228)
+        $subject = "IPSC Kurs Watcher - Neue Kurse und Verf" + [char]252 + "gbarkeits" + [char]228 + "nderungen"
 
         # Send email with retry logic
         $sent = _SendMailViaGraph -AccessToken $token.access_token -UserId $Config.user_id `
