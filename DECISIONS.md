@@ -112,47 +112,135 @@ IPSC Kurs Watcher muss shooting-store.ch/de/kategorie/kurse1 monitoren. Anforder
 
 ### Modulare Event-Driven Architektur (PowerShell)
 
-Datenfluss:
+**Pipeline pro Monitor (konfigurierbar):**
 ```
-Monitor (HTML Scraper)
-    ↓
-Filter (by Course Type)
-    ↓
-Deduplicator (Check State)
-    ↓
-Notifiers (Email, Webhook, Toast) → State Update
+┌─────────────────────────────────────────┐
+│ Config: monitors[] + filters[] + notify  │
+└──────────────────┬──────────────────────┘
+                   │
+                   ↓
+        ┌──────────────────────┐
+        │  MonitorFactory      │  (Route zu richtigem Provider)
+        └──────────────┬───────┘
+                       │
+        ┌──────────────▼──────────────┐
+        │ Monitor[provider]           │  (URL scrapen, konfigurierbar)
+        │ - shooting-store            │  (CSS-Selektoren aus config)
+        │ - generic-html              │  (neue Provider einfach hinzufügbar)
+        │ - [zukünftig: weitere]      │
+        └──────────────┬──────────────┘
+                       │
+        ┌──────────────▼──────────────┐
+        │ FilterByType                │  (Pattern-Matching, konfigurierbar)
+        │ - Tryout, Basic, Basic 2.0  │  (Patterns aus config)
+        │ - Exclusions                │  (Exclude-Patterns)
+        └──────────────┬──────────────┘
+                       │
+        ┌──────────────▼──────────────┐
+        │ Deduplicator               │  (Check State, configurable hash)
+        │ - Hash-basiert              │  (Doppelbenachrichtigung verhindern)
+        └──────────────┬──────────────┘
+                       │
+        ┌──────────────▼──────────────┐
+        │ Notifiers (parallel)        │  (Email, Webhook, Toast)
+        │ - enabled/disabled          │  (Konfigurierbar)
+        └──────────────┬──────────────┘
+                       │
+        ┌──────────────▼──────────────┐
+        │ State Update                │  (Neue Kurse in state.json)
+        └─────────────────────────────┘
 ```
 
-### Module Structure
+**Flexibilität:**
+- **Multiple Monitors:** Gleichzeitig mehrere Websites monitoren (jeweils mit eigner Frequenz)
+- **Provider-System:** Neue Website-Parser einfach als neuer Monitor hinzufügbar
+- **CSS-Selektoren:** Pro Monitor konfigurierbar (keine Code-Änderung nötig)
+- **Course Types:** Flexible Pattern-Matching (z.B. "Basic" matched "Basic", "basic-level", "beginners", etc.)
+- **Enable/Disable:** Monitors, Course-Types, Notifiers einzeln konfigurierbar
+
+### Module Structure (Provider-Based Architecture)
 
 | Modul | Zweck | PowerShell Pattern |
 |-------|-------|-------------------|
-| **src/core/Scheduler.ps1** | Orchestrierung, Poll-Loop | Main loop, interval control |
-| **src/core/State.ps1** | State-Persistierung (JSON) | Read/Write JSON state file |
-| **src/monitors/MonitorShootingStore.ps1** | shooting-store.ch scrapen | Invoke-WebRequest, HTML parsing |
-| **src/filters/FilterByType.ps1** | Nach Kurs-Typ filtern | Array filter mit Kurs-Typen |
+| **src/core/Scheduler.ps1** | Orchestrierung, Poll-Loop pro Monitor | Main loop, configurable intervals |
+| **src/core/State.ps1** | State-Persistierung (JSON) | Read/Write JSON state file, deduplication |
+| **src/core/Config.ps1** | Config laden + Validierung | ConvertFrom-Json, validate schema |
+| **src/monitors/MonitorBase.ps1** | Base-Klasse für alle Monitors | Abstract pattern, common logic |
+| **src/monitors/MonitorShootingStore.ps1** | shooting-store.ch Parser | CSS-Selector basiert (konfigurierbar) |
+| **src/monitors/MonitorGenericHtml.ps1** | Generic HTML Parser | Template-basiert für neue Websites |
+| **src/monitors/MonitorFactory.ps1** | Factory: Monitor-Instanzen erstellen | Route config.provider zu richtigem Monitor |
+| **src/filters/FilterByType.ps1** | Nach Kurs-Typ filtern | Pattern-Matching mit flexiblen Patterns |
+| **src/filters/FilterByExclusion.ps1** | Kurse ausschließen | Regex-basierte Exclusion-Patterns |
 | **src/notifiers/NotifyEmail.ps1** | Email versenden | Send-MailMessage (SMTP) |
-| **src/notifiers/NotifyWebhook.ps1** | Webhook (Discord, Slack) | Invoke-WebRequest (JSON) |
+| **src/notifiers/NotifyWebhook.ps1** | Webhook (Discord, Slack, etc.) | Invoke-WebRequest (JSON) |
 | **src/notifiers/NotifyToast.ps1** | Windows Toast Notification | .NET WinRT API |
 | **src/utils/Logging.ps1** | Strukturierte Logs | Write-Output, JSON logs |
-| **src/utils/Config.ps1** | Config laden (JSON) | ConvertFrom-Json |
+| **src/utils/Crypto.ps1** | Secrets verschlüsseln (optional) | DPAPI für SMTP Passwort |
 
-### config.json Template
+### config.json Template (Flexible & Extensible)
 
 ```json
 {
   "monitors": [
     {
-      "name": "shooting-store",
+      "id": "shooting-store-main",
+      "name": "Shooting Store - Hauptseite",
+      "provider": "shooting-store",
       "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
       "poll_interval_minutes": 15,
       "enabled": true,
       "request_timeout_seconds": 30,
-      "retry_attempts": 3
+      "retry_attempts": 3,
+      "parser_config": {
+        "selector_course": "div.course-item",
+        "selector_title": "h3.course-title",
+        "selector_type": "span.course-type",
+        "selector_availability": "span.availability-count"
+      }
+    },
+    {
+      "id": "other-provider-example",
+      "name": "Andere Schießanlage (zukünftig)",
+      "provider": "generic-html",
+      "url": "https://example.com/kurse",
+      "poll_interval_minutes": 30,
+      "enabled": false,
+      "parser_config": {
+        "selector_course": "article.kurs",
+        "selector_title": "h2",
+        "selector_type": "span.type",
+        "selector_availability": "span.plaetze"
+      }
     }
   ],
   "filters": {
-    "course_types": ["Tryout", "Basic", "Basic 2.0"],
+    "course_types": [
+      {
+        "id": "tryout",
+        "name": "Tryout",
+        "patterns": ["Tryout", "Einsteiger-Kurs"],
+        "enabled": true
+      },
+      {
+        "id": "basic",
+        "name": "Basic Level",
+        "patterns": ["Basic", "Anfänger", "Level 1"],
+        "enabled": true
+      },
+      {
+        "id": "basic2",
+        "name": "Basic 2.0",
+        "patterns": ["Basic 2.0", "Basic 2.x", "Level 2"],
+        "enabled": true
+      },
+      {
+        "id": "advanced",
+        "name": "Advanced",
+        "patterns": ["Advanced", "Fortgeschrittene", "Level 3+"],
+        "enabled": false
+      }
+    ],
+    "exclude_patterns": ["Privatunterricht", "VIP-Kurs"],
     "min_availability": 1
   },
   "notifiers": {
@@ -167,7 +255,8 @@ Notifiers (Email, Webhook, Toast) → State Update
     "webhook": {
       "enabled": true,
       "url": "https://hooks.slack.com/services/YOUR/WEBHOOK",
-      "timeout_seconds": 10
+      "timeout_seconds": 10,
+      "retry_attempts": 2
     },
     "toast": {
       "enabled": true,
@@ -187,6 +276,14 @@ Notifiers (Email, Webhook, Toast) → State Update
   }
 }
 ```
+
+**Flexibilität:**
+- **Multiple Monitors:** Beliebig viele Websites (shooting-store, andere Anbieter, etc.)
+- **Provider-System:** Verschiedene Parser für verschiedene Website-Strukturen (z.B. "shooting-store", "generic-html")
+- **CSS-Selektoren:** Konfigurierbar pro Monitor für HTML-Scraping
+- **Course Types:** Flexible Pattern-Matching (z.B. "Tryout" matched "Einsteiger-Kurs", "tryout-basic", etc.)
+- **Enable/Disable:** Monitors und Course-Types können einzeln aktiviert/deaktiviert werden
+- **Exclusions:** Patterns zum Ausschließen von Kursen (z.B. Privatunterricht)
 
 ### state.json Structure
 

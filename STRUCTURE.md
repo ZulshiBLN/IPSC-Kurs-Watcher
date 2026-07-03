@@ -6,31 +6,68 @@ Projekt-spezifische Struktur- und Organisationsregeln für IPSC Kurs Watcher.
 
 ## 1. VERZEICHNIS-STRUKTUR
 
-**Generische Projekt-Struktur:**
+**PowerShell Projekt-Struktur (Modulare & Erweiterbar):**
 
 ```
 IPSC-Kurs-Watcher/
-├── src/                    # Source code
-│   ├── core/              # Kernfunktionalität
-│   ├── monitors/          # Monitoring-Module
-│   ├── notifiers/         # Benachrichtigungs-Module
-│   ├── utils/             # Helper-Funktionen
-│   └── config/            # Konfiguration
-├── tests/                 # Tests (parallel zu src)
-│   ├── fixtures/          # Test-Daten
-│   ├── unit/
-│   └── integration/
-├── docs/                  # Dokumentation
-├── examples/              # Beispiel-Skripte
-├── .github/               # GitHub workflows (if applicable)
-├── build/                 # Build-Artefakte
-├── CLAUDE.md              # Claude Collaboration Rules
-├── DECISIONS.md           # Architektur-Entscheidungen
-├── STRUCTURE.md           # This file
-├── README.md              # Projekt-Übersicht
-├── CHANGELOG.md           # Versionshistorie
-└── [config]               # Abhängig von Tech-Stack (package.json, setup.py, Cargo.toml, etc.)
+├── src/
+│   ├── core/
+│   │   ├── Scheduler.ps1         # Main orchestration loop
+│   │   ├── Config.ps1            # Load & validate config.json
+│   │   └── State.ps1             # State management (JSON persistence)
+│   ├── monitors/
+│   │   ├── MonitorBase.ps1       # Abstract base class (common logic)
+│   │   ├── MonitorFactory.ps1    # Factory: route provider → Monitor
+│   │   ├── MonitorShootingStore.ps1  # shooting-store.ch (CSS-Selector based)
+│   │   └── MonitorGenericHtml.ps1    # Generic HTML template (neue Websites)
+│   ├── filters/
+│   │   ├── FilterByType.ps1      # Pattern-based course type filtering
+│   │   └── FilterByExclusion.ps1 # Exclusion pattern filtering
+│   ├── notifiers/
+│   │   ├── NotifyEmail.ps1       # SMTP email notification
+│   │   ├── NotifyWebhook.ps1     # HTTP webhook (Slack, Discord, etc.)
+│   │   └── NotifyToast.ps1       # Windows Toast notification
+│   └── utils/
+│       ├── Logging.ps1           # Structured logging (JSON)
+│       ├── Crypto.ps1            # Secret encryption (DPAPI) - optional
+│       └── Helpers.ps1           # Common utilities
+├── config/
+│   ├── config.json               # Main configuration (user edits this)
+│   ├── config.schema.json        # JSON schema for validation
+│   └── config.example.json       # Template with all options
+├── data/
+│   ├── state.json                # Current state (courses notified)
+│   └── logs/                     # Application logs (rotated)
+├── tests/
+│   ├── fixtures/                 # Mock data (HTML, config examples)
+│   ├── unit/                     # Unit tests (Pester)
+│   └── integration/              # Integration tests
+├── examples/
+│   ├── config-single-site.json   # Example: single monitor
+│   ├── config-multi-site.json    # Example: multiple monitors
+│   └── add-new-website.md        # How to add new provider/monitor
+├── docs/
+│   ├── architecture.md           # Architecture overview
+│   ├── configuration-guide.md    # How to configure
+│   └── extending.md              # How to extend (new monitors, etc.)
+├── .github/
+│   └── workflows/                # CI/CD (GitHub Actions)
+├── build/
+│   └── artifacts/                # Build output
+├── Watcher.ps1                   # Main entry point (calls Scheduler)
+├── build.ps1                     # Build/validate script (PSScriptAnalyzer)
+├── CLAUDE.md                     # Collaboration rules
+├── DECISIONS.md                  # Architecture decisions (ADRs)
+├── STRUCTURE.md                  # This file (implementation rules)
+├── README.md                     # Project overview
+└── CHANGELOG.md                  # Version history
 ```
+
+**Key Design Principles:**
+- **Config-First:** Alles über `config.json` konfigurierbar (keine Hardcodes)
+- **Provider-Pattern:** Neue Websites einfach als neuer Monitor hinzufügbar
+- **Extensible:** Neue Notifier, Filter, oder Monitors ohne Code-Änderungen möglich
+- **Stateless Execution:** Ein Run = unabhängig, State nur zur Deduplication
 
 ---
 
@@ -44,6 +81,103 @@ IPSC-Kurs-Watcher/
 - **Fail-Fast Pattern** – Bei Fehlern schnell fehlagen, nicht silent swallowing
 - **Configuration over Code** – Behavior durch Config definieren, nicht hard-coded
 - **Extensibility** – Neue Monitor/Notifier/Filter leicht hinzufügbar
+- **Config-First Architecture** – Alles über `config.json` konfigurierbar
+- **Provider Pattern** – Neue Websites/Services als Plugins (Provider) ohne Core-Änderungen
+- **No Hardcodes** – Websites, Kurs-Typen, Selektoren, Patterns = alles in config.json
+
+---
+
+### 2.1 - Neue Website Hinzufügen (Extensibility)
+
+**Schritte:**
+
+1. **config.json erweitern:**
+```json
+"monitors": [
+  {
+    "id": "my-website",
+    "name": "My Shooting Website",
+    "provider": "generic-html",
+    "url": "https://my-website.com/kurse",
+    "poll_interval_minutes": 20,
+    "enabled": true,
+    "parser_config": {
+      "selector_course": "div.course",
+      "selector_title": "h2.course-name",
+      "selector_type": "span.level",
+      "selector_availability": "span.spots"
+    }
+  }
+]
+```
+
+2. **Kurs-Typen erweitern:**
+```json
+"filters": {
+  "course_types": [
+    {
+      "id": "intermediate",
+      "name": "Intermediate",
+      "patterns": ["Intermediate", "Level 2-3", "Mittelstufe"],
+      "enabled": true
+    }
+  ]
+}
+```
+
+3. **Optional: Neuer Monitor-Provider (nur wenn generic-html nicht ausreicht):**
+```powershell
+# src/monitors/MonitorMyProvider.ps1
+function Invoke-MonitorMyProvider {
+  param([hashtable]$Config)
+  # Custom logic für diese Website
+  # Return: Array von [PSCustomObject]@{ Title, Type, Availability, ... }
+}
+```
+Dann in `MonitorFactory.ps1` registrieren.
+
+---
+
+### 2.2 - Neue Kurs-Typen Hinzufügen
+
+**Nur config.json ändern:**
+```json
+"filters": {
+  "course_types": [
+    {
+      "id": "tactical",
+      "name": "Tactical",
+      "patterns": ["Tactical", "Einsatz-Training"],
+      "enabled": true
+    }
+  ]
+}
+```
+
+---
+
+### 2.3 - Neue Notifier Hinzufügen
+
+**Beispiel: Telegram Notification:**
+
+1. **src/notifiers/NotifyTelegram.ps1** erstellen:
+```powershell
+function Send-TelegramNotification {
+  param([array]$Courses, [hashtable]$Config)
+  # Invoke-WebRequest zu Telegram Bot API
+}
+```
+
+2. **config.json erweitern:**
+```json
+"notifiers": {
+  "telegram": {
+    "enabled": true,
+    "bot_token": "YOUR_BOT_TOKEN",
+    "chat_id": "YOUR_CHAT_ID"
+  }
+}
+```
 
 ---
 
