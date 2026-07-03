@@ -80,7 +80,7 @@ function Test-MonitorConnection {
 
     Write-Verbose "Testing connection for monitor: $($Monitor.Name)"
 
-    $result = $Monitor.Test-Connection()
+    $result = $Monitor.TestConnection()
     return $result -eq "OK"
 }
 

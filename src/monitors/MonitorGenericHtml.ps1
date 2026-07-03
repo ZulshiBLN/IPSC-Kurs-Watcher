@@ -19,14 +19,14 @@ class MonitorGenericHtml : MonitorBase {
         }
     }
 
-    [array]Get-Courses() {
+    [array]GetCourses() {
         $this.ValidateConfig()
 
         Write-Verbose "Fetching courses from $($this.Url) (generic-html)"
 
         try {
-            $htmlContent = $this.Fetch-WebContent()
-            $courses = $this.Parse-Html($htmlContent)
+            $htmlContent = $this.FetchWebContent()
+            $courses = $this.ParseHtml($htmlContent)
 
             Write-Verbose "Found $($courses.Count) courses"
             return $courses
@@ -35,7 +35,7 @@ class MonitorGenericHtml : MonitorBase {
         }
     }
 
-    hidden [array]Parse-Html([string]$HtmlContent) {
+    hidden [array]ParseHtml([string]$HtmlContent) {
         $courses = @()
 
         if ([string]::IsNullOrWhiteSpace($HtmlContent)) {
@@ -47,7 +47,7 @@ class MonitorGenericHtml : MonitorBase {
             $doc = New-Object System.Xml.XmlDocument
             $doc.PreserveWhitespace = $true
 
-            $htmlClean = $this.Clean-Html($HtmlContent)
+            $htmlClean = $this.CleanHtml($HtmlContent)
             $doc.LoadXml($htmlClean)
 
             # Get course selector from config
@@ -60,7 +60,7 @@ class MonitorGenericHtml : MonitorBase {
 
             foreach ($element in $courseElements) {
                 try {
-                    $course = $this.Extract-CourseData($element)
+                    $course = $this.ExtractCourseData($element)
                     if ($course) {
                         $courses += $course
                     }
@@ -76,7 +76,7 @@ class MonitorGenericHtml : MonitorBase {
         }
     }
 
-    hidden [hashtable]Extract-CourseData([System.Xml.XmlElement]$Element) {
+    hidden [hashtable]ExtractCourseData([System.Xml.XmlElement]$Element) {
         $course = @{
             id = ""
             title = ""
@@ -132,7 +132,7 @@ class MonitorGenericHtml : MonitorBase {
         return $course
     }
 
-    hidden [string]Clean-Html([string]$Html) {
+    hidden [string]CleanHtml([string]$Html) {
         $cleaned = $Html
 
         # Remove script and style tags
@@ -146,4 +146,4 @@ class MonitorGenericHtml : MonitorBase {
     }
 }
 
-Export-ModuleMember -Variable MonitorGenericHtml
+# Export-ModuleMember -Variable MonitorGenericHtml

@@ -23,16 +23,16 @@ class MonitorBase {
         $this.Name = $Config.name
         $this.Provider = $Config.provider
         $this.Url = $Config.url
-        $this.TimeoutSeconds = $Config.request_timeout_seconds ?? 30
-        $this.RetryAttempts = $Config.retry_attempts ?? 3
-        $this.ParserConfig = $Config.parser_config ?? @{}
+        $this.TimeoutSeconds = if ($null -eq $Config.request_timeout_seconds) { 30 } else { $Config.request_timeout_seconds }
+        $this.RetryAttempts = if ($null -eq $Config.retry_attempts) { 3 } else { $Config.retry_attempts }
+        $this.ParserConfig = if ($null -eq $Config.parser_config) { @{} } else { $Config.parser_config }
     }
 
-    [array]Get-Courses() {
-        throw "Get-Courses() must be implemented by derived class"
+    [array]GetCourses() {
+        throw "GetCourses() must be implemented by derived class"
     }
 
-    [string]Test-Connection() {
+    [string]TestConnection() {
         try {
             $params = @{
                 Uri = $this.Url
@@ -48,7 +48,7 @@ class MonitorBase {
         }
     }
 
-    [object]Invoke-WithRetry([scriptblock]$ScriptBlock) {
+    [object]InvokeWithRetry([scriptblock]$ScriptBlock) {
         $attempt = 0
         $lastError = $null
 
@@ -70,7 +70,7 @@ class MonitorBase {
         throw "Failed after $($this.RetryAttempts) retries: $lastError"
     }
 
-    [object]Fetch-WebContent() {
+    [object]FetchWebContent() {
         $scriptBlock = {
             $params = @{
                 Uri = $this.Url
@@ -84,7 +84,7 @@ class MonitorBase {
             return $response.Content
         }
 
-        return $this.Invoke-WithRetry($scriptBlock)
+        return $this.InvokeWithRetry($scriptBlock)
     }
 
     [void]ValidateConfig() {
@@ -102,4 +102,4 @@ class MonitorBase {
     }
 }
 
-Export-ModuleMember -Variable MonitorBase
+# Export-ModuleMember -Variable MonitorBase

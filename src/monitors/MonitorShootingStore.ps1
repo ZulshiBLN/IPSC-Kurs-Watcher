@@ -18,14 +18,14 @@ class MonitorShootingStore : MonitorBase {
         }
     }
 
-    [array]Get-Courses() {
+    [array]GetCourses() {
         $this.ValidateConfig()
 
         Write-Verbose "Fetching courses from $($this.Url)"
 
         try {
-            $htmlContent = $this.Fetch-WebContent()
-            $courses = $this.Parse-Html($htmlContent)
+            $htmlContent = $this.FetchWebContent()
+            $courses = $this.ParseHtml($htmlContent)
 
             Write-Verbose "Found $($courses.Count) courses"
             return $courses
@@ -34,7 +34,7 @@ class MonitorShootingStore : MonitorBase {
         }
     }
 
-    hidden [array]Parse-Html([string]$HtmlContent) {
+    hidden [array]ParseHtml([string]$HtmlContent) {
         $courses = @()
 
         if ([string]::IsNullOrWhiteSpace($HtmlContent)) {
@@ -47,7 +47,7 @@ class MonitorShootingStore : MonitorBase {
             $doc.PreserveWhitespace = $true
 
             # Clean HTML for XML parsing
-            $htmlClean = $this.Clean-Html($HtmlContent)
+            $htmlClean = $this.CleanHtml($HtmlContent)
 
             $doc.LoadXml($htmlClean)
 
@@ -61,7 +61,7 @@ class MonitorShootingStore : MonitorBase {
 
             foreach ($element in $courseElements) {
                 try {
-                    $course = $this.Extract-CourseData($element)
+                    $course = $this.ExtractCourseData($element)
                     if ($course) {
                         $courses += $course
                     }
@@ -77,7 +77,7 @@ class MonitorShootingStore : MonitorBase {
         }
     }
 
-    hidden [hashtable]Extract-CourseData([System.Xml.XmlElement]$Element) {
+    hidden [hashtable]ExtractCourseData([System.Xml.XmlElement]$Element) {
         $course = @{
             id = ""
             title = ""
@@ -134,7 +134,7 @@ class MonitorShootingStore : MonitorBase {
         return $course
     }
 
-    hidden [string]Clean-Html([string]$Html) {
+    hidden [string]CleanHtml([string]$Html) {
         # Basic HTML cleanup for XML parsing
         $cleaned = $Html
 
@@ -149,4 +149,4 @@ class MonitorShootingStore : MonitorBase {
     }
 }
 
-Export-ModuleMember -Variable MonitorShootingStore
+# Export-ModuleMember -Variable MonitorShootingStore

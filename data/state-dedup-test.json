@@ -1,17 +1,17 @@
 ﻿{
     "last_notified":  [
                           {
-                              "hash":  "41FF70B65E72BFA8",
+                              "hash":  "E51DD505FE419D4F",
                               "notification_channels":  [
                                                             "email"
                                                         ],
-                              "course_name":  "Test Course",
+                              "course_name":  "Old Course",
                               "course_type":  "",
-                              "notified_at":  "2026-07-03T11:45:31.6716789+02:00",
-                              "course_id":  "test-1"
+                              "notified_at":  "2026-07-03T11:45:31.7881188+02:00",
+                              "course_id":  "old-1"
                           }
                       ],
     "version":  1,
     "last_error":  null,
-    "last_poll":  "2026-07-03T11:45:31.6829922+02:00"
+    "last_poll":  "2026-07-03T11:45:31.7881188+02:00"
 }

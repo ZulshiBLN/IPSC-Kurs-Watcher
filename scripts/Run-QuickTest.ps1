@@ -50,7 +50,7 @@ Write-Host "PHASE 1: Core Infrastructure" -ForegroundColor Yellow
 Test-Component "Logging System" {
     . src/utils/Logging.ps1
     Initialize-Logging -LogDir "data/logs-test" | Out-Null
-    Write-Log "INFO" "Test" | Out-Null
+    Write-Log -Message "Test" -Level "INFO" | Out-Null
     Test-Path "data/logs-test"
 }
 
@@ -62,9 +62,10 @@ Test-Component "Configuration Loading" {
 
 Test-Component "State Management" {
     . src/core/State.ps1
-    Initialize-State -StatePath "data/state-test.json" | Out-Null
-    Add-NotifiedCourse -CourseId "test-1" -StatePath "data/state-test.json" | Out-Null
-    Test-CourseNotified -CourseId "test-1" -StatePath "data/state-test.json"
+    $state = Initialize-State -StatePath "data/state-test.json"
+    $state = Add-NotifiedCourse -State $state -CourseId "test-1" -CourseName "Test Course"
+    Save-State -State $state -StatePath "data/state-test.json" | Out-Null
+    Test-CourseNotified -State $state -CourseId "test-1" -CourseName "Test Course"
 }
 
 # ============================================================================
@@ -94,31 +95,37 @@ Test-Component "Type Filter" {
         @{ id = "1"; title = "Tryout"; type = "Tryout"; availability = 5 }
         @{ id = "2"; title = "Basic"; type = "Basic"; availability = 3 }
     )
-    $filtered = Invoke-FilterByType -Courses $testCourses -Config $config
+    $typeFilter = New-CourseTypeFilter -CourseTypes $config.filters.course_types
+    $filtered = Invoke-FilterByType -Courses $testCourses -Filter $typeFilter
     $filtered -is [array]
 }
 
 Test-Component "Exclusion Filter" {
     . src/filters/FilterByExclusion.ps1
+    . src/core/Config.ps1
     $testCourses = @(
         @{ id = "1"; title = "Normal" }
         @{ id = "2"; title = "Privatunterricht" }
     )
-    $filtered = Invoke-FilterByExclusion -Courses $testCourses -Config $config
+    $config = Read-Config -ConfigPath "config/config.json"
+    $excludePatterns = if ($null -eq $config.filters.exclude_patterns) { @() } else { $config.filters.exclude_patterns }
+    $filter = New-ExclusionFilter -ExcludePatterns $excludePatterns
+    $filtered = Invoke-FilterByExclusion -Courses $testCourses -Filter $filter
     $filtered.Count -lt $testCourses.Count
 }
 
 Test-Component "Deduplicator" {
     . src/filters/Deduplicator.ps1
     . src/core/State.ps1
-    Initialize-State -StatePath"data/state-dedup-test.json" | Out-Null
-    Add-NotifiedCourse -CourseId "old-1" -StatePath"data/state-dedup-test.json" | Out-Null
+    $state = Initialize-State -StatePath "data/state-dedup-test.json"
+    $state = Add-NotifiedCourse -State $state -CourseId "old-1" -CourseName "Old Course"
+    Save-State -State $state -StatePath "data/state-dedup-test.json" | Out-Null
     $testCourses = @(
         @{ id = "new-1"; title = "New"; availability = 5 }
         @{ id = "old-1"; title = "Old"; availability = 3 }
     )
-    $dedup = New-Deduplicator -StatePath"data/state-dedup-test.json"
-    $filtered = Invoke-Deduplication -Courses $testCourses -Config @{} -Deduplicator $dedup
+    $dedup = New-Deduplicator -State $state -MinAvailability 1
+    $filtered = Invoke-Deduplication -Courses $testCourses -Deduplicator $dedup
     $filtered.Count -eq 1
 }
 
@@ -129,13 +136,29 @@ Write-Host "PHASE 4: Notifier Pipeline" -ForegroundColor Yellow
 
 Test-Component "Email Notifier" {
     . src/notifiers/NotifyEmail.ps1
+    . src/core/Config.ps1
     $config = Read-Config -ConfigPath "config/config.json"
-    $emailNotifier = New-EmailNotifier -Config $config.notifiers.email
+    $emailConfig = @{
+        enabled = $config.notifiers.email.enabled
+        smtp_host = $config.notifiers.email.smtp_host
+        smtp_port = $config.notifiers.email.smtp_port
+        use_tls = $config.notifiers.email.use_tls
+        smtp_username = $config.notifiers.email.smtp_username
+        smtp_password_encrypted = $config.notifiers.email.smtp_password_encrypted
+        from_address = $config.notifiers.email.from_address
+        from_name = $config.notifiers.email.from_name
+        recipients = @($config.notifiers.email.recipients)
+        retry_attempts = $config.notifiers.email.retry_attempts
+        timeout_seconds = $config.notifiers.email.timeout_seconds
+    }
+    $emailNotifier = New-EmailNotifier -Config $emailConfig
     $null -ne $emailNotifier
 }
 
 Test-Component "Discord Notifier" {
     . src/notifiers/NotifyDiscord.ps1
+    . src/core/Config.ps1
+    $config = Read-Config -ConfigPath "config/config.json"
     if ($config.notifiers.discord.enabled) {
         $discordNotifier = New-DiscordNotifier -Config $config.notifiers.discord
         $null -ne $discordNotifier
@@ -221,13 +244,21 @@ Test-Component "Full Pipeline" {
     . src/core/Config.ps1
     . src/core/State.ps1
     . src/filters/FilterPipeline.ps1
-    $config = Read-Config -ConfigPath "config/config.json"
-    Initialize-State -StatePath"data/state-integration-test.json" | Out-Null
+    $configJson = Get-Content "config/config.json" -Raw
+    $configObj = $configJson | ConvertFrom-Json
+    $configHashtable = @{
+        filters = @{
+            course_types = $configObj.filters.course_types
+            exclude_patterns = $configObj.filters.exclude_patterns
+            min_availability = $configObj.filters.min_availability
+        }
+    }
+    $state = Initialize-State -StatePath "data/state-integration-test.json"
     $testCourses = @(
         @{ id = "i1"; title = "Int1"; type = "Tryout"; availability = 5; url = "https://example.com/1" }
         @{ id = "i2"; title = "Int2"; type = "Basic"; availability = 3; url = "https://example.com/2" }
     )
-    $result = Invoke-FilterPipeline -Courses $testCourses -Config $config
+    $result = Invoke-FilterPipeline -Courses $testCourses -Config $configHashtable -State $state
     $result -is [array]
 }
 
