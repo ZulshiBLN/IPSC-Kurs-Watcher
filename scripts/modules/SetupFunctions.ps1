@@ -113,11 +113,28 @@ function Invoke-SetEnvironmentVariables {
         }
     }
 
-    $userId = Read-Host "Azure User ID (your email address)"
+    $userId = Read-Host "Azure User ID (comma-separated emails: user1@example.com,user2@example.com)"
     if (-not $userId) {
         Write-Host "[ERROR] User ID is required" -ForegroundColor Red
         return $false
     }
+
+    # Validate email format for each address
+    $emails = @($userId -split ',').Trim() | Where-Object { $_ }
+    if ($emails.Count -eq 0) {
+        Write-Host "[ERROR] At least one valid email address is required" -ForegroundColor Red
+        return $false
+    }
+
+    $emailPattern = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    foreach ($email in $emails) {
+        if ($email -notmatch $emailPattern) {
+            Write-Host "[ERROR] Invalid email format: $email" -ForegroundColor Red
+            return $false
+        }
+    }
+
+    $userId = $emails -join ','
 
     $credStorePath = Read-Host "Credential Store Path (press Enter for default)"
     if (-not $credStorePath) {

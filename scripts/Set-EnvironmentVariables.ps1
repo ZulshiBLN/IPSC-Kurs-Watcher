@@ -8,7 +8,7 @@ Set IPSC Kurs Watcher environment variables persistently.
 Sets environment variables required for IPSC Kurs Watcher:
 - IPSC_AZURE_TENANT_ID (Azure AD Tenant ID)
 - IPSC_AZURE_CLIENT_ID (Azure AD Application ID)
-- IPSC_AZURE_USER_ID (Recipient email address)
+- IPSC_AZURE_USER_ID (Recipient email addresses, comma-separated: user1@example.com,user2@example.com)
 - IPSC_CREDENTIAL_STORE_PATH (Optional - encrypted credential storage)
 - IPSC_DISCORD_WEBHOOKS (Optional - Discord webhook URLs)
 

@@ -540,14 +540,17 @@ function Send-EmailNotification {
         # Create subject with proper UTF-8 encoding for special characters (ü=252, ä=228)
         $subject = "IPSC Kurs Watcher - Neue Kurse und Verf" + [char]252 + "gbarkeits" + [char]228 + "nderungen"
 
-        # Send email with retry logic (userId is the recipient's email address)
+        # Parse recipient emails (comma-separated list supported)
+        $recipients = @($userId -split ',').Trim() | Where-Object { $_ }
+
+        # Send email with retry logic (userId is the primary user account for sendMail)
         $sent = _SendMailViaGraph -AccessToken $token.access_token -UserId $userId `
-            -Recipients @($userId) -Subject $subject -HtmlBody $htmlBody `
+            -Recipients $recipients -Subject $subject -HtmlBody $htmlBody `
             -TimeoutSeconds $Config.timeout_seconds -MaxRetries $Config.retry_attempts
 
         if ($sent) {
             Write-Log -Level INFO -Message "Email notification sent" `
-                -Context @{ alert_count = $Alerts.Count; recipient = $userId }
+                -Context @{ alert_count = $Alerts.Count; recipient_count = $recipients.Count; recipients = ($recipients -join ';') }
         }
     }
     catch {
