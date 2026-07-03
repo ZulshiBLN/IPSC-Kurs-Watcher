@@ -6,8 +6,8 @@ Automation und Monitoring für IPSC-Kurse mit intelligenter Benachrichtigung und
 
 ## Projekt-Kontext
 
-**Version:** v0.5.0  
-**Status:** [DEVELOPMENT] Module-based architecture with Setup/Uninstall orchestrators, all 31 integration tests passing, ready for release  
+**Version:** v0.6.0  
+**Status:** [DEVELOPMENT] Fixed email architecture, null-array bug fixed, ready for testing  
 **Sprache/Stack:** PowerShell 5.1 (Windows)  
 **Ziel:** Sichere, performante, tokensparende Zusammenarbeit mit Claude
 
