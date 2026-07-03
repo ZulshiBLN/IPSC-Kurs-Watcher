@@ -27,9 +27,9 @@ function New-DiscordNotifier {
     }
 
     # Set defaults
-    $Config.embed_color = $Config.embed_color ?? 3447003  # Blue
-    $Config.retry_attempts = $Config.retry_attempts ?? 2
-    $Config.timeout_seconds = $Config.timeout_seconds ?? 10
+    if ($null -eq $Config.embed_color) { $Config.embed_color = 3447003 }
+    if ($null -eq $Config.retry_attempts) { $Config.retry_attempts = 2 }
+    if ($null -eq $Config.timeout_seconds) { $Config.timeout_seconds = 10 }
 
     return $Config
 }
@@ -151,11 +151,14 @@ function Build-DiscordPayload {
     $fields = @()
 
     foreach ($course in $Courses) {
+        $courseType = if ($null -eq $course.type) { "N/A" } else { $course.type }
+        $availability = if ($null -eq $course.availability) { "Unbekannt" } else { $course.availability }
+
         $courseInfo = @{
             name = $course.title
             value = @(
-                "**Typ:** $($course.type ?? 'N/A')",
-                "**VerfÃ¼gbarkeit:** $($course.availability ?? 'Unbekannt') PlÃ¤tze"
+                "**Typ:** $courseType",
+                "**Verfügbarkeit:** $availability Plätze"
             ) -join "`n"
             inline = $false
         }

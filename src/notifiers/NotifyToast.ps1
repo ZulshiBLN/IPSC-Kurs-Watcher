@@ -22,9 +22,9 @@ function New-ToastNotifier {
         [hashtable]$Config
     )
 
-    $Config.app_id = $Config.app_id ?? "IPSC.Kurs.Watcher"
-    $Config.sound = $Config.sound ?? "Notification.Default"
-    $Config.duration = $Config.duration ?? "long"
+    if ($null -eq $Config.app_id) { $Config.app_id = "IPSC.Kurs.Watcher" }
+    if ($null -eq $Config.sound) { $Config.sound = "Notification.Default" }
+    if ($null -eq $Config.duration) { $Config.duration = "long" }
 
     # Check Windows version
     $osVersion = [System.Environment]::OSVersion.Version
@@ -115,7 +115,8 @@ function Build-ToastXml {
     $courseSummary = @()
     for ($i = 0; $i -lt [Math]::Min(3, $Courses.Count); $i++) {
         $course = $Courses[$i]
-        $courseSummary += "$($course.title) ($($course.type ?? 'N/A'))"
+        $courseType = if ($null -eq $course.type) { "N/A" } else { $course.type }
+        $courseSummary += "$($course.title) ($courseType)"
     }
 
     if ($Courses.Count -gt 3) {

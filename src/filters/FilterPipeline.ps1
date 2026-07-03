@@ -64,7 +64,7 @@ function Invoke-FilterPipeline {
 
     # Step 2: Filter by Exclusion
     try {
-        $excludePatterns = $Config.filters.exclude_patterns ?? @()
+        $excludePatterns = if ($null -eq $Config.filters.exclude_patterns) { @() } else { $Config.filters.exclude_patterns }
         $exclusionFilter = New-ExclusionFilter -ExcludePatterns $excludePatterns
         $coursesAfterFilter = Invoke-FilterByExclusion -Courses $coursesAfterFilter -Filter $exclusionFilter
         Write-Verbose "After exclusion filter: $($coursesAfterFilter.Count) courses"
@@ -80,7 +80,7 @@ function Invoke-FilterPipeline {
 
     # Step 3: Deduplication
     try {
-        $minAvailability = $Config.filters.min_availability ?? 1
+        $minAvailability = if ($null -eq $Config.filters.min_availability) { 1 } else { $Config.filters.min_availability }
         $deduplicator = New-Deduplicator -State $State -MinAvailability $minAvailability
         $coursesAfterFilter = Invoke-Deduplication -Courses $coursesAfterFilter -Deduplicator $deduplicator
         Write-Verbose "After deduplication: $($coursesAfterFilter.Count) courses"

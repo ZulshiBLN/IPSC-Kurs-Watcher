@@ -49,7 +49,7 @@ Write-Host "PHASE 1: Core Infrastructure" -ForegroundColor Yellow
 
 Test-Component "Logging System" {
     . src/utils/Logging.ps1
-    Initialize-Logging -LogDirectory "data/logs-test" | Out-Null
+    Initialize-Logging -LogDir "data/logs-test" | Out-Null
     Write-Log "INFO" "Test" | Out-Null
     Test-Path "data/logs-test"
 }
@@ -62,9 +62,9 @@ Test-Component "Configuration Loading" {
 
 Test-Component "State Management" {
     . src/core/State.ps1
-    Initialize-State -StateFile "data/state-test.json" | Out-Null
-    Add-NotifiedCourse -CourseId "test-1" -StateFile "data/state-test.json" | Out-Null
-    Test-CourseNotified -CourseId "test-1" -StateFile "data/state-test.json"
+    Initialize-State -StatePath "data/state-test.json" | Out-Null
+    Add-NotifiedCourse -CourseId "test-1" -StatePath "data/state-test.json" | Out-Null
+    Test-CourseNotified -CourseId "test-1" -StatePath "data/state-test.json"
 }
 
 # ============================================================================
@@ -111,13 +111,13 @@ Test-Component "Exclusion Filter" {
 Test-Component "Deduplicator" {
     . src/filters/Deduplicator.ps1
     . src/core/State.ps1
-    Initialize-State -StateFile "data/state-dedup-test.json" | Out-Null
-    Add-NotifiedCourse -CourseId "old-1" -StateFile "data/state-dedup-test.json" | Out-Null
+    Initialize-State -StatePath"data/state-dedup-test.json" | Out-Null
+    Add-NotifiedCourse -CourseId "old-1" -StatePath"data/state-dedup-test.json" | Out-Null
     $testCourses = @(
         @{ id = "new-1"; title = "New"; availability = 5 }
         @{ id = "old-1"; title = "Old"; availability = 3 }
     )
-    $dedup = New-Deduplicator -StateFile "data/state-dedup-test.json"
+    $dedup = New-Deduplicator -StatePath"data/state-dedup-test.json"
     $filtered = Invoke-Deduplication -Courses $testCourses -Config @{} -Deduplicator $dedup
     $filtered.Count -eq 1
 }
@@ -222,7 +222,7 @@ Test-Component "Full Pipeline" {
     . src/core/State.ps1
     . src/filters/FilterPipeline.ps1
     $config = Read-Config -ConfigPath "config/config.json"
-    Initialize-State -StateFile "data/state-integration-test.json" | Out-Null
+    Initialize-State -StatePath"data/state-integration-test.json" | Out-Null
     $testCourses = @(
         @{ id = "i1"; title = "Int1"; type = "Tryout"; availability = 5; url = "https://example.com/1" }
         @{ id = "i2"; title = "Int2"; type = "Basic"; availability = 3; url = "https://example.com/2" }

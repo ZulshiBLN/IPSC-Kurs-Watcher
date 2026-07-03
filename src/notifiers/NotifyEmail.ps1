@@ -34,11 +34,11 @@ function New-EmailNotifier {
     }
 
     # Set defaults
-    $Config.smtp_port = $Config.smtp_port ?? 587
-    $Config.use_tls = $Config.use_tls ?? $true
-    $Config.retry_attempts = $Config.retry_attempts ?? 3
-    $Config.timeout_seconds = $Config.timeout_seconds ?? 30
-    $Config.from_name = $Config.from_name ?? "IPSC Kurs Watcher"
+    if ($null -eq $Config.smtp_port) { $Config.smtp_port = 587 }
+    if ($null -eq $Config.use_tls) { $Config.use_tls = $true }
+    if ($null -eq $Config.retry_attempts) { $Config.retry_attempts = 3 }
+    if ($null -eq $Config.timeout_seconds) { $Config.timeout_seconds = 30 }
+    if ($null -eq $Config.from_name) { $Config.from_name = "IPSC Kurs Watcher" }
 
     return $Config
 }
@@ -218,15 +218,17 @@ function Build-EmailBody {
 
     foreach ($course in $Courses) {
         $availability = if ($course.availability -gt 0) {
-            "<span class='course-availability'>$($course.availability) PlÃ¤tze frei</span>"
+            "<span class='course-availability'>$($course.availability) Plätze frei</span>"
         } else {
-            "<span>VerfÃ¼gbarkeit unbekannt</span>"
+            "<span>Verfügbarkeit unbekannt</span>"
         }
+
+        $courseType = if ($null -eq $course.type) { "N/A" } else { $course.type }
 
         $html += @"
             <div class="course">
                 <div class="course-title">$($course.title)</div>
-                <div class="course-type">Typ: $($course.type ?? 'N/A')</div>
+                <div class="course-type">Typ: $courseType</div>
                 <div>$availability</div>
             </div>
 "@
