@@ -999,6 +999,205 @@ Negative:
 
 ---
 
+## ADR-011: Data Privacy & GDPR Compliance
+
+**Status:** [ACCEPTED] ✅ (Implemented v0.6.0)
+
+**Context:**
+IPSC Kurs Watcher processes user data (email addresses, monitoring state, logs) and must comply with GDPR (EU Data Protection Regulation) for EU users. Key requirements:
+- Transparency about data processing (Article 5, 12-14)
+- Legal basis for processing (Article 6)
+- User rights (Article 12-22): access, correction, erasure, portability
+- Breach notification (Article 33)
+- Data retention policies (Article 5)
+
+**Decision:**
+
+### **Data Processing Inventory**
+
+**What data is collected:**
+1. **Email Addresses** (user-provided, in config.json)
+   - Purpose: Send course notifications
+   - Legal basis: Legitimate interest (user requests notifications)
+   - Retention: Until user removes from config
+
+2. **Course Information** (scraped from shooting-store.ch)
+   - Name, date, time, availability, URL
+   - Stored in: `data/state.json`
+   - Purpose: Deduplication (prevent duplicate alerts)
+   - Retention: Indefinite (updated each cycle)
+
+3. **Monitoring Logs** (system-generated)
+   - Timestamps, events, course data, error messages
+   - Stored in: `data/logs/watcher-YYYY-MM-DD.log`
+   - Purpose: Operational logging, debugging, audit trail
+   - Retention: 30 days (auto-cleanup)
+
+4. **OAuth2 Tokens** (auto-generated, encrypted)
+   - JWT tokens for Graph API authentication
+   - Stored in: `data/.token_cache.json` (DPAPI encrypted)
+   - Purpose: Email sending
+   - Retention: Auto-refreshed, short-lived (1 hour)
+
+### **Data Processing Activities (Legal Basis)**
+
+**Activity 1: Email Notification Sending**
+- **Legal Basis:** Legitimate Interest (Article 6.1.f GDPR)
+- **Justification:** User explicitly configures email address + recipients
+- **Transparency:** Documented in README + Privacy Policy
+- **Rights:** User can opt-out by removing from config
+
+**Activity 2: Operational Logging**
+- **Legal Basis:** Legitimate Interest (Article 6.1.f GDPR)
+- **Justification:** Necessary for debugging, monitoring, incident response
+- **Data Minimization:** Email addresses masked in logs
+- **Rights:** User can request log deletion (within 30-day retention)
+
+**Activity 3: State Storage (Deduplication)**
+- **Legal Basis:** Legitimate Interest (Article 6.1.f GDPR)
+- **Justification:** Necessary for core functionality (avoid spam)
+- **Data Minimization:** Only course metadata stored, not personal data
+- **Rights:** User can request state reset (will resend all course alerts)
+
+### **User Rights Implementation**
+
+**Right to Access (Article 15):**
+- User can access `data/state.json` and `config/config.json`
+- Log files available at `data/logs/`
+- No custom export mechanism needed (direct file access)
+
+**Right to Erasure (Article 17):**
+- User can delete `data/state.json` → reset deduplication
+- User can delete `data/logs/` → delete historical logs
+- User can remove email from config → stop notifications
+- No data sent to external services (except email via Graph API)
+
+**Right to Rectification (Article 16):**
+- User can edit `config/config.json` directly
+- Email addresses corrected immediately
+
+**Right to Data Portability (Article 20):**
+- All data stored as JSON (human-readable, portable)
+- No vendor lock-in
+
+**Right to Object (Article 21):**
+- User can disable monitor in config: `"enabled": false`
+- User can opt-out of notifications: remove from recipients
+
+### **Data Retention Policy**
+
+| Data Type | Storage Location | Retention | Deletion |
+|-----------|------------------|-----------|----------|
+| Config (emails, settings) | config/config.json | Indefinite | Manual (user delete) |
+| State (dedup index) | data/state.json | Indefinite | Manual or auto-reset |
+| Logs (operational) | data/logs/*.log | 30 days | Auto-cleanup |
+| OAuth2 Tokens | data/.token_cache.json | 1 hour (auto-refresh) | Auto-expire |
+
+**30-day log retention rationale:**
+- Sufficient for debugging/incident response
+- Complies with GDPR data minimization (not indefinite)
+- Auto-cleanup prevents accidental storage overflow
+
+### **Privacy Policy Template**
+
+Every deployment must have privacy documentation (README or separate policy):
+
+```
+Data Controller: [User/Organization]
+
+This application processes:
+- Email addresses (for notifications)
+- Course availability data (for deduplication)
+- System logs (for debugging)
+
+Legal Basis: Legitimate Interest (monitoring course availability)
+
+Retention:
+- Logs: 30 days (auto-deleted)
+- State: Indefinite (user-deletable)
+
+Your Rights:
+- Access: See data/state.json and logs
+- Deletion: Delete config.json or data/ folder
+- Opt-out: Remove yourself from recipients list
+
+For GDPR questions: Contact [your-email]
+```
+
+### **Breach Notification Plan**
+
+**Incident Response (GDPR Article 33):**
+
+If unauthorized access to user data detected:
+1. **Assess:** Did it involve personal data? (email addresses, logs)
+2. **Document:** What data, when discovered, how contained
+3. **Notify Authority:** Within 72 hours (Article 33.1)
+   - To: National data protection authority (GDPR Supervisory Authority)
+   - Must include: What happened, likely consequences, mitigation
+4. **Notify Users:** Without undue delay if high risk (Article 34)
+   - Send email to affected users
+   - Include: What data compromised, what we're doing, what they should do
+5. **Remediate:** Prevent recurrence
+   - Delete compromised tokens
+   - Review security controls
+   - Update documentation
+
+**Examples of breaches requiring notification:**
+- `data/.token_cache.json` file accessed without authorization
+- Log files publicly exposed containing email addresses
+- config.json with credentials accidentally committed to GitHub
+
+**Examples NOT requiring notification:**
+- Normal, authorized operation (system logging)
+- User manually deletes their own data
+- Authorized Azure AD access via OAuth2
+
+### **Compliance Checklist**
+
+Before deployment:
+- [ ] Privacy Policy document exists (README or separate doc)
+- [ ] Data retention policy documented (30 days logs, indefinite state)
+- [ ] No plaintext secrets in config.json
+- [ ] Email addresses masked in logs
+- [ ] User can delete data (documented in README)
+- [ ] GDPR Article 6 legal basis documented (Legitimate Interest)
+- [ ] Breach notification procedure documented (72-hour window)
+- [ ] Data controller identified (who is responsible)
+
+### **DPIA (Data Protection Impact Assessment)**
+
+**Requirement:** DPIA recommended for "processing on a large scale" (Article 35)
+
+**For IPSC Kurs Watcher:** Currently low-risk (single-user, no large-scale collection)
+- No systematic monitoring of public spaces
+- No automated decision-making
+- Limited personal data (emails only)
+- Short retention (30-day logs)
+
+**DPIA deferred to:** Phase 2 or later (if multi-user/cloud features added)
+
+**Consequences:**
+
+Positive:
+- (+) **GDPR Compliant:** Legal basis documented, user rights implemented
+- (+) **Transparent:** Privacy policy explains data use
+- (+) **User Control:** Can delete data, opt-out, request access
+- (+) **Data Minimization:** 30-day logs, masked emails
+- (+) **Breach Ready:** Incident response procedure documented
+
+Negative:
+- (-) **Documentation Overhead:** Privacy policy must be maintained
+- (-) **Liability:** Data controller responsible for compliance
+- (-) **Auditing:** Logs must be protected from unauthorized access
+
+**See Also:**
+- [SECURITY.md](docs/SECURITY.md) – Technical security controls
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) – Data flow
+- GDPR Articles 5, 6, 12-22, 33, 35 (European Union Regulation 2016/679)
+- https://gdpr-info.eu/ – GDPR reference documentation
+
+---
+
 ## FINAL ADR Status Summary
 
 | # | Title | Status | Scope |
@@ -1013,6 +1212,7 @@ Negative:
 | 008 | Testing Framework | [ACCEPTED] ✅ | Pester 5.0+, 90% coverage, integration tests |
 | 009 | GUI (Phase 2) | [ACCEPTED] ✅ | WPF Desktop, Monitors/Filters/Notifiers/Scheduler |
 | 010 | Security & Credentials | [ACCEPTED] ✅ | DPAPI encryption, Env vars, URL validation, Error masking |
+| 011 | Data Privacy & GDPR | [ACCEPTED] ✅ | Data inventory, legal basis, user rights, breach notification |
 
 ### All Critical Architectural Decisions MADE ✅
 

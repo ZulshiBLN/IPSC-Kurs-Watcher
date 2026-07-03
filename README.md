@@ -384,6 +384,76 @@ Before running in production or with notifications enabled:
 
 ---
 
+## Data Privacy & GDPR Compliance
+
+**What data does IPSC Kurs Watcher collect?**
+
+1. **Email Addresses** (configured by user)
+   - Stored in: `config/config.json`
+   - Used for: Sending course notifications
+   - Retention: Indefinite (user-controlled)
+
+2. **Course Information** (automatically collected)
+   - Stored in: `data/state.json`
+   - Content: Course names, dates, times, availability, URLs
+   - Used for: Deduplication (prevent duplicate alerts)
+   - Retention: Indefinite (user-controlled, can delete anytime)
+
+3. **System Logs** (automatically generated)
+   - Stored in: `data/logs/watcher-*.log`
+   - Content: Monitoring events, errors, timestamps (sensitive data masked)
+   - Used for: Debugging and audit trail
+   - Retention: 30 days (automatic cleanup)
+
+4. **OAuth2 Tokens** (auto-generated, encrypted)
+   - Stored in: `data/.token_cache.json` (encrypted with DPAPI, binary format)
+   - Used for: Email sending authentication
+   - Retention: 1 hour per token (auto-refreshed)
+
+**All data is stored locally on your machine. No data is uploaded to cloud services except when sending notifications (email via Graph API).**
+
+### Your Rights Under GDPR
+
+- **Right to Access:** View your data in `data/` directory
+- **Right to Delete:** Delete any data anytime (see below)
+- **Right to Rectification:** Edit `config/config.json` to update your email
+- **Right to Opt-Out:** Remove yourself from recipients list
+
+### Data Deletion & Opt-Out
+
+**Stop receiving notifications:**
+```powershell
+# Edit config/config.json and remove your email from "sender" and "recipients"
+# Save and restart application
+```
+
+**Delete all course tracking:**
+```powershell
+Remove-Item data/state.json
+# Effect: All previous courses treated as "new" (may re-alert)
+```
+
+**Delete all logs:**
+```powershell
+Remove-Item data/logs -Recurse -Force
+# New logs auto-generated on next run
+```
+
+**Complete uninstall:**
+```powershell
+Stop-ScheduledTask -TaskName "IPSC-Kurs-Watcher" -Confirm:$false
+Unregister-ScheduledTask -TaskName "IPSC-Kurs-Watcher" -Confirm:$false
+Remove-Item "C:\Scripts\IPSC-Kurs-Watcher" -Recurse -Force
+```
+
+### Full Privacy Documentation
+
+- **Privacy Policy:** [docs/GDPR_PRIVACY_POLICY.md](docs/GDPR_PRIVACY_POLICY.md) – Complete GDPR compliance details
+- **Data Retention:** [docs/DATA_RETENTION_POLICY.md](docs/DATA_RETENTION_POLICY.md) – How long data is kept
+- **Incident Response:** [docs/INCIDENT_RESPONSE_PLAYBOOK.md](docs/INCIDENT_RESPONSE_PLAYBOOK.md) – What to do if security incident occurs
+
+---
+
 ## Contributing
 
 This is a solo project. For questions or issues:
