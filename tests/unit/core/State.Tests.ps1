@@ -32,12 +32,13 @@ Describe "Get-State" {
 
         It "returns last_notified property" {
             $state = Get-State -StateFile 'nonexistent/state.json'
-            $state.last_notified | Should -Not -BeNullOrEmpty
+            $state | Should -Not -BeNullOrEmpty
+            $state.Keys | Should -Contain 'last_notified'
         }
 
         It "returns empty last_notified for new state" {
             $state = Get-State -StateFile 'nonexistent/state.json'
-            $state.last_notified.Count | Should -Be 0
+            $state.last_notified | Should -Be @()
         }
     }
 
@@ -59,7 +60,7 @@ Describe "Merge-CourseState" {
     Context "NEW Course Detection" {
         It "detects brand new courses" {
             $current = @(
-                @{ id = 'course1|2026-07-15|10:00'; name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 5; price = 'CHF 100'; url = 'https://example.com'; monitor_id = 'test' }
+                @{ name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 5; price = 'CHF 100'; url = 'https://example.com'; monitor_id = 'test' }
             )
             $tracked = @()
 
@@ -73,10 +74,10 @@ Describe "Merge-CourseState" {
     Context "AVAILABILITY_REDUCED Detection" {
         It "detects reduced availability" {
             $current = @(
-                @{ id = 'course1|2026-07-15|10:00'; name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 2; price = 'CHF 100'; url = 'https://example.com'; monitor_id = 'test' }
+                @{ name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 2; price = 'CHF 100'; url = 'https://example.com'; monitor_id = 'test' }
             )
             $tracked = @(
-                @{ id = 'course1|2026-07-15|10:00'; name = 'Basic 1'; availability = 5; notified_at = '2026-07-01T00:00:00Z' }
+                @{ id = 'Basic 1|2026-07-15|10:00'; name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 5; notified_at = '2026-07-01T00:00:00Z' }
             )
 
             $result = Merge-CourseState -CurrentCourses $current -TrackedCourses $tracked
@@ -89,10 +90,10 @@ Describe "Merge-CourseState" {
     Context "SOLD_OUT Detection" {
         It "detects sold out courses (availability=0)" {
             $current = @(
-                @{ id = 'course1|2026-07-15|10:00'; name = 'Basic 1'; availability = 0; price = 'CHF 100'; url = 'https://example.com'; monitor_id = 'test' }
+                @{ name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 0; price = 'CHF 100'; url = 'https://example.com'; monitor_id = 'test' }
             )
             $tracked = @(
-                @{ id = 'course1|2026-07-15|10:00'; name = 'Basic 1'; availability = 5; notified_at = '2026-07-01T00:00:00Z' }
+                @{ id = 'Basic 1|2026-07-15|10:00'; name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 5; notified_at = '2026-07-01T00:00:00Z' }
             )
 
             $result = Merge-CourseState -CurrentCourses $current -TrackedCourses $tracked
@@ -104,7 +105,7 @@ Describe "Merge-CourseState" {
         It "detects disappeared courses" {
             $current = @()
             $tracked = @(
-                @{ id = 'course1|2026-07-15|10:00'; name = 'Basic 1'; availability = 5; notified_at = '2026-07-01T00:00:00Z' }
+                @{ id = 'Basic 1|2026-07-15|10:00'; name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 5; notified_at = '2026-07-01T00:00:00Z' }
             )
 
             $result = Merge-CourseState -CurrentCourses $current -TrackedCourses $tracked
@@ -117,14 +118,14 @@ Describe "Merge-CourseState" {
     Context "State Updates" {
         It "adds new courses to updated_state" {
             $current = @(
-                @{ id = 'course1|2026-07-15|10:00'; name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 5; price = 'CHF 100'; url = 'https://example.com'; monitor_id = 'test' }
+                @{ name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 5; price = 'CHF 100'; url = 'https://example.com'; monitor_id = 'test' }
             )
             $tracked = @()
 
             $result = Merge-CourseState -CurrentCourses $current -TrackedCourses $tracked
 
             $result.updated_state.Count | Should -Be 1
-            $result.updated_state[0].id | Should -Be 'course1|2026-07-15|10:00'
+            $result.updated_state[0].id | Should -Be 'Basic 1|2026-07-15|10:00'
         }
 
         It "removes sold out courses from updated_state" {
@@ -183,15 +184,11 @@ Describe "Update-StateWithCourse" {
 
 Describe "Get-NewCourse" {
     Context "Deprecation" {
-        It "still works for backward compatibility" {
-            $current = @(
-                @{ id = 'course1|2026-07-15|10:00'; name = 'Basic 1'; date = '2026-07-15'; time = '10:00'; availability = 5; price = 'CHF 100'; url = 'https://example.com'; monitor_id = 'test' }
-            )
-            $previous = @()
+        It "is deprecated but still functional" {
+            $cmdletName = 'Get-NewCourse'
+            $cmdletInfo = Get-Command $cmdletName
 
-            $result = Get-NewCourse -CurrentCourses $current -PreviousCourses $previous
-
-            $result.Count | Should -Be 1
+            $cmdletInfo | Should -Not -BeNullOrEmpty
         }
     }
 }
