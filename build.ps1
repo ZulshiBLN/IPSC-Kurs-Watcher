@@ -109,6 +109,47 @@ if ($Validate) {
 }
 
 # ============================================================================
+# Pester Unit Tests
+# ============================================================================
+
+if ($Test) {
+    Write-Host "`n=== Pester Unit Tests ===" -ForegroundColor Cyan
+
+    if (-not (Get-Module -Name Pester -ListAvailable)) {
+        Write-Host "[WARN] Pester not installed, installing..." -ForegroundColor Yellow
+        Install-Module -Name Pester -Force -Scope CurrentUser | Out-Null
+    }
+
+    $testPath = Join-Path $ScriptRoot 'tests/unit'
+    if (Test-Path $testPath) {
+        try {
+            $pesterResult = Invoke-Pester -Path $testPath -PassThru -ErrorAction Stop
+
+            if ($pesterResult.Result -eq 'Passed') {
+                Write-Host "[OK] All unit tests passed" -ForegroundColor Green
+                Write-Host "  Tests run: $($pesterResult.TotalCount)" -ForegroundColor Green
+                Write-Host "  Passed: $($pesterResult.PassedCount)" -ForegroundColor Green
+                $totalPassed += $pesterResult.PassedCount
+            }
+            else {
+                Write-Host "[FAIL] Unit tests failed" -ForegroundColor Red
+                Write-Host "  Tests run: $($pesterResult.TotalCount)" -ForegroundColor Red
+                Write-Host "  Passed: $($pesterResult.PassedCount)" -ForegroundColor Green
+                Write-Host "  Failed: $($pesterResult.FailedCount)" -ForegroundColor Red
+                $totalFailed += $pesterResult.FailedCount
+            }
+        }
+        catch {
+            Write-Host "[FAIL] Pester execution error: $_" -ForegroundColor Red
+            $totalFailed++
+        }
+    }
+    else {
+        Write-Host "[WARN] No tests directory found at $testPath" -ForegroundColor Yellow
+    }
+}
+
+# ============================================================================
 # Summary
 # ============================================================================
 
