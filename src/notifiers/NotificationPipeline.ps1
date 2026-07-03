@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -190,8 +190,4 @@ function Test-AllNotifiers {
 
     return $testResults
 }
-
-Export-ModuleMember -Function @(
-    'Invoke-NotificationPipeline',
-    'Test-AllNotifiers'
-)
+

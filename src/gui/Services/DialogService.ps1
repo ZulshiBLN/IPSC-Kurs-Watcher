@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -80,7 +80,3 @@ class DialogService {
 function New-DialogService {
     return [DialogService]::new()
 }
-
-Export-ModuleMember -Function @(
-    'New-DialogService'
-)

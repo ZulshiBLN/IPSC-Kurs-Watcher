@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -138,10 +138,4 @@ function Invoke-Deduplication {
 
     return $newCourses
 }
-
-Export-ModuleMember -Function @(
-    'New-Deduplicator',
-    'Test-CourseDuplicate',
-    'Test-CourseAvailability',
-    'Invoke-Deduplication'
-)
+

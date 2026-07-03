@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -83,8 +83,4 @@ function Test-MonitorConnection {
     $result = $Monitor.Test-Connection()
     return $result -eq "OK"
 }
-
-Export-ModuleMember -Function @(
-    'New-Monitor',
-    'Test-MonitorConnection'
-)
+

@@ -40,8 +40,11 @@ function Start-ConfigurationApp {
     Initialize-WPF
 
     try {
+        # Determine script directory
+        $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+
         # Load ViewModel
-        $viewModelPath = Join-Path (Split-Path $MyInvocation.MyCommand.Path) "ViewModels/MainWindowViewModel.ps1"
+        $viewModelPath = Join-Path $scriptDir "ViewModels/MainWindowViewModel.ps1"
         if (-not (Test-Path $viewModelPath)) {
             throw "ViewModel not found at: $viewModelPath"
         }
@@ -49,7 +52,7 @@ function Start-ConfigurationApp {
         $viewModel = [MainWindowViewModel]::new()
 
         # Load XAML
-        $xamlPath = Join-Path (Split-Path $MyInvocation.MyCommand.Path) "MainWindow.xaml"
+        $xamlPath = Join-Path $scriptDir "MainWindow.xaml"
         if (-not (Test-Path $xamlPath)) {
             throw "MainWindow.xaml not found at: $xamlPath"
         }

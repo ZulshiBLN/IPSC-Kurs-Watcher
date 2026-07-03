@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -155,7 +155,7 @@ function Build-DiscordPayload {
             name = $course.title
             value = @(
                 "**Typ:** $($course.type ?? 'N/A')",
-                "**Verfügbarkeit:** $($course.availability ?? 'Unbekannt') Plätze"
+                "**VerfÃ¼gbarkeit:** $($course.availability ?? 'Unbekannt') PlÃ¤tze"
             ) -join "`n"
             inline = $false
         }
@@ -180,9 +180,4 @@ function Build-DiscordPayload {
 
     return $payload | ConvertTo-Json -Depth 10
 }
-
-Export-ModuleMember -Function @(
-    'New-DiscordNotifier',
-    'Test-DiscordConnection',
-    'Send-DiscordNotification'
-)
+

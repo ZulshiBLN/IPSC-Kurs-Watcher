@@ -1,10 +1,10 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
     Complete filter pipeline orchestration
 .DESCRIPTION
-    Orchestrates the full filtering pipeline: Type → Exclusion → Deduplication → Availability
+    Orchestrates the full filtering pipeline: Type â†’ Exclusion â†’ Deduplication â†’ Availability
 .NOTES
     This module ties together all filter modules into a cohesive pipeline
 #>
@@ -132,8 +132,4 @@ function Get-PipelineStatistics {
 
     return $stats
 }
-
-Export-ModuleMember -Function @(
-    'Invoke-FilterPipeline',
-    'Get-PipelineStatistics'
-)
+

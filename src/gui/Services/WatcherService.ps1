@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -137,7 +137,3 @@ function New-WatcherService {
 
     return [WatcherService]::new($WatcherPath, $ConfigPath)
 }
-
-Export-ModuleMember -Function @(
-    'New-WatcherService'
-)

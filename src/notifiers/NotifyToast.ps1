@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -138,8 +138,4 @@ function Build-ToastXml {
 
     return $xml
 }
-
-Export-ModuleMember -Function @(
-    'New-ToastNotifier',
-    'Send-ToastNotification'
-)
+

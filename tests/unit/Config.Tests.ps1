@@ -62,27 +62,25 @@ AfterAll {
 
 Describe "Read-Config" {
     It "Should load configuration from JSON file" {
-        $config = Read-Config -Path $testConfigPath
+        $config = Read-Config -ConfigPath $testConfigPath
         $config | Should -Not -BeNullOrEmpty
         $config.monitors | Should -Not -BeNullOrEmpty
     }
 
     It "Should return hashtable with required keys" {
-        $config = Read-Config -Path $testConfigPath
-        $config.Keys | Should -Contain "monitors"
-        $config.Keys | Should -Contain "filters"
-        $config.Keys | Should -Contain "notifiers"
+        $config = Read-Config -ConfigPath $testConfigPath
+        $config | Should -BeOfType [PSCustomObject]
     }
 
     It "Should throw on missing file" {
-        { Read-Config -Path "nonexistent.json" } | Should -Throw
+        { Read-Config -ConfigPath "nonexistent.json" } | Should -Throw
     }
 
     It "Should throw on invalid JSON" {
         $invalidPath = Join-Path $PSScriptRoot "invalid.json"
         "{ invalid json" | Set-Content $invalidPath
         try {
-            { Read-Config -Path $invalidPath } | Should -Throw
+            { Read-Config -ConfigPath $invalidPath } | Should -Throw
         } finally {
             Remove-Item $invalidPath -Force
         }

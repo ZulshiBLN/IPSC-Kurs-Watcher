@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -154,9 +154,4 @@ function Clean-OldLogs {
         Where-Object { $_.LastWriteTime -lt $cutoffDate } |
         Remove-Item -Force
 }
-
-Export-ModuleMember -Function @(
-    'Initialize-Logging',
-    'Write-Log',
-    'Clean-OldLogs'
-)
+

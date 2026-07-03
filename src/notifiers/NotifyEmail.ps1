@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -122,7 +122,7 @@ function Send-EmailNotification {
 
     try {
         # Build email subject and body
-        $subject = "[$($MonitorName)] $($Courses.Count) neue Kurs(e) verfügbar"
+        $subject = "[$($MonitorName)] $($Courses.Count) neue Kurs(e) verfÃ¼gbar"
         $body = Build-EmailBody -Courses $Courses -MonitorName $MonitorName
 
         # Create mail message
@@ -210,7 +210,7 @@ function Build-EmailBody {
 <body>
     <div class="container">
         <div class="header">
-            <h2>Neue Kurse verfügbar!</h2>
+            <h2>Neue Kurse verfÃ¼gbar!</h2>
             <p>$($Courses.Count) neue/aktualisierte Kurse von $MonitorName</p>
         </div>
         <div class="courses">
@@ -218,9 +218,9 @@ function Build-EmailBody {
 
     foreach ($course in $Courses) {
         $availability = if ($course.availability -gt 0) {
-            "<span class='course-availability'>$($course.availability) Plätze frei</span>"
+            "<span class='course-availability'>$($course.availability) PlÃ¤tze frei</span>"
         } else {
-            "<span>Verfügbarkeit unbekannt</span>"
+            "<span>VerfÃ¼gbarkeit unbekannt</span>"
         }
 
         $html += @"
@@ -267,9 +267,4 @@ function Unprotect-SecretData {
 
     return (ConvertTo-SecureString $plainText -AsPlainText -Force)
 }
-
-Export-ModuleMember -Function @(
-    'New-EmailNotifier',
-    'Test-EmailConnection',
-    'Send-EmailNotification'
-)
+

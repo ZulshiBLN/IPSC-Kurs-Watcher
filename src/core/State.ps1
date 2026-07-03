@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -260,12 +260,4 @@ function Clear-OldStateEntries {
 
     return $State
 }
-
-Export-ModuleMember -Function @(
-    'Initialize-State',
-    'Read-State',
-    'Save-State',
-    'Add-NotifiedCourse',
-    'Test-CourseNotified',
-    'Clear-OldStateEntries'
-)
+

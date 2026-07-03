@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -125,9 +125,4 @@ function Invoke-FilterByExclusion {
 
     return $filtered
 }
-
-Export-ModuleMember -Function @(
-    'New-ExclusionFilter',
-    'Test-CourseExcluded',
-    'Invoke-FilterByExclusion'
-)
+

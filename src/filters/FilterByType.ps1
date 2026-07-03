@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -17,7 +17,7 @@ function New-CourseTypeFilter {
         Array of course type configurations
     .EXAMPLE
         $types = @(
-            @{ id = "basic"; patterns = @("Basic", "Anfänger") },
+            @{ id = "basic"; patterns = @("Basic", "AnfÃ¤nger") },
             @{ id = "tryout"; patterns = @("Tryout") }
         )
         $filter = New-CourseTypeFilter -CourseTypes $types
@@ -170,10 +170,4 @@ function Invoke-FilterByType {
 
     return $filtered
 }
-
-Export-ModuleMember -Function @(
-    'New-CourseTypeFilter',
-    'Test-CourseType',
-    'Get-MatchingCourseType',
-    'Invoke-FilterByType'
-)
+

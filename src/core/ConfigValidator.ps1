@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -178,9 +178,4 @@ function Test-Configuration {
 
     return $schemaValid -and $consistencyValid
 }
-
-Export-ModuleMember -Function @(
-    'Test-ConfigSchema',
-    'Test-ConfigConsistency',
-    'Test-Configuration'
-)
+

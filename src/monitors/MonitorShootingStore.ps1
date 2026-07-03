@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -111,7 +111,7 @@ class MonitorShootingStore : MonitorBase {
             $availElement = $Element.SelectSingleNode($availabilitySelector)
             if ($availElement) {
                 $availText = $availElement.InnerText.Trim()
-                # Try to extract number (e.g., "5 Plätze" -> 5)
+                # Try to extract number (e.g., "5 PlÃ¤tze" -> 5)
                 if ($availText -match '(\d+)') {
                     $course.availability = [int]$matches[1]
                 }

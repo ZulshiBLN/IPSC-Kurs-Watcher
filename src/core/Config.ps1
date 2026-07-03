@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -180,13 +180,4 @@ function Get-EnabledCourseTypes {
 
     return $Config.filters.course_types | Where-Object { $_.enabled -eq $true }
 }
-
-Export-ModuleMember -Function @(
-    'Get-ConfigPath',
-    'New-ConfigFromTemplate',
-    'Read-Config',
-    'Save-Config',
-    'Get-ConfigMonitor',
-    'Get-EnabledMonitors',
-    'Get-EnabledCourseTypes'
-)
+
