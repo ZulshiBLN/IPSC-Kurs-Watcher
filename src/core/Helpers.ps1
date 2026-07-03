@@ -98,6 +98,59 @@ function Test-FilePath {
     return $false
 }
 
+function Test-ValidUrl {
+    <#
+    .SYNOPSIS
+    Validates URL format and scheme for security.
+
+    .DESCRIPTION
+    Validates that a URL is well-formed and uses only safe schemes (http/https).
+    Prevents URL injection attacks by validating format before use in web requests.
+
+    .PARAMETER Url
+    URL string to validate.
+
+    .OUTPUTS
+    Boolean - $true if URL is valid, $false otherwise.
+
+    .EXAMPLE
+    Test-ValidUrl -Url 'https://www.example.com/path'
+    # Returns: $true
+
+    .EXAMPLE
+    Test-ValidUrl -Url 'ftp://example.com'
+    # Returns: $false (unsupported scheme)
+
+    .EXAMPLE
+    Test-ValidUrl -Url 'not a url'
+    # Returns: $false (invalid format)
+
+    .NOTES
+    Only http and https schemes are allowed. Relative URLs return $false.
+    #>
+    [CmdletBinding()]
+    param([string]$Url)
+
+    if (-not $Url) { return $false }
+
+    try {
+        $uri = [System.Uri]::new($Url)
+
+        if (-not $uri.IsAbsoluteUri) {
+            return $false
+        }
+
+        if ($uri.Scheme -notin @('http', 'https')) {
+            return $false
+        }
+
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function Get-FileDirectory {
     <#
     .SYNOPSIS

@@ -333,6 +333,12 @@ function _SendMailViaGraph {
             $jsonBodyBytes = [System.Text.Encoding]::UTF8.GetBytes($jsonBody)
 
             $sendMailUri = "https://graph.microsoft.com/v1.0/users/$UserId/sendMail"
+
+            if (-not (Test-ValidUrl -Url $sendMailUri)) {
+                Write-Log -Level ERROR -Message "Invalid sendMail URI detected" -Context @{ uri = $sendMailUri }
+                return $false
+            }
+
             Invoke-WebRequest -Uri $sendMailUri -Method POST `
                 -Headers $headers -Body $jsonBodyBytes -UseBasicParsing `
                 -TimeoutSec $TimeoutSeconds -ErrorAction Stop | Out-Null

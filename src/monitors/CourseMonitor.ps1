@@ -59,6 +59,10 @@ class CourseMonitor : MonitorBase {
                     $availability = 0
                     if ($detailHref) {
                         $detailUrl = "$($this.BaseUrl)$detailHref"
+                        if (-not (Test-ValidUrl -Url $detailUrl)) {
+                            Write-Log -Level WARN -Message "Invalid detail URL detected, skipping" -Context @{ url = $detailUrl }
+                            continue
+                        }
                         try {
                             $detailResponse = Invoke-WebRequest -Uri $detailUrl -TimeoutSec $this.TimeoutSeconds -UseBasicParsing
                             if ($detailResponse.Content -match 'data-update="lagerinfo_anzeige\.lagerinfo">(\d+)\s+Artikel') {

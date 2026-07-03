@@ -100,6 +100,55 @@ Describe "Test-FilePath" {
     }
 }
 
+Describe "Test-ValidUrl" {
+    Context "URL Validation" {
+        It "returns true for valid HTTPS URL" {
+            $result = Test-ValidUrl -Url 'https://www.example.com/path'
+            $result | Should -Be $true
+        }
+
+        It "returns true for valid HTTP URL" {
+            $result = Test-ValidUrl -Url 'http://example.com/api/endpoint'
+            $result | Should -Be $true
+        }
+
+        It "returns true for Graph API endpoint" {
+            $result = Test-ValidUrl -Url 'https://graph.microsoft.com/v1.0/users/user123/sendMail'
+            $result | Should -Be $true
+        }
+
+        It "returns false for FTP URL" {
+            $result = Test-ValidUrl -Url 'ftp://files.example.com'
+            $result | Should -Be $false
+        }
+
+        It "returns false for relative URL" {
+            $result = Test-ValidUrl -Url '/path/to/resource'
+            $result | Should -Be $false
+        }
+
+        It "returns false for malformed URL" {
+            $result = Test-ValidUrl -Url 'not a url'
+            $result | Should -Be $false
+        }
+
+        It "returns false for empty string" {
+            $result = Test-ValidUrl -Url ''
+            $result | Should -Be $false
+        }
+
+        It "returns false for null" {
+            $result = Test-ValidUrl -Url $null
+            $result | Should -Be $false
+        }
+
+        It "returns false for URL with unsupported scheme" {
+            $result = Test-ValidUrl -Url 'gopher://example.com'
+            $result | Should -Be $false
+        }
+    }
+}
+
 Describe "Get-FileDirectory" {
     Context "Directory Creation" {
         It "creates directory if missing" {
