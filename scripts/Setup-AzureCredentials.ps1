@@ -122,6 +122,18 @@ catch {
     exit 1
 }
 
+Write-Header "Discord Webhook Setup (Optional)"
+
+$discordWebhooksInput = Read-Host "Discord Webhook URLs (comma-separated, leave empty to skip)"
+
+if ($discordWebhooksInput) {
+    $env:IPSC_DISCORD_WEBHOOKS = $discordWebhooksInput.Trim()
+    Write-Success "Discord webhooks set in environment variable"
+}
+else {
+    Write-Host "[INFO] Discord webhooks skipped" -ForegroundColor Gray
+}
+
 Write-Header "Setting Environment Variables"
 
 try {
@@ -134,6 +146,10 @@ try {
     Write-Success "  IPSC_AZURE_TENANT_ID = $tenantId"
     Write-Success "  IPSC_AZURE_CLIENT_ID = $clientId"
     Write-Success "  IPSC_CREDENTIAL_STORE_PATH = $CredentialStorePath"
+
+    if ($env:IPSC_DISCORD_WEBHOOKS) {
+        Write-Success "  IPSC_DISCORD_WEBHOOKS = [SET]"
+    }
 }
 catch {
     Write-Error-Custom "Failed to set environment variables: $_"
@@ -179,13 +195,16 @@ Write-Host "Option 1: Using setx command (requires restart)" -ForegroundColor Ye
 Write-Host "  setx IPSC_AZURE_TENANT_ID `"$tenantId`"" -ForegroundColor Gray
 Write-Host "  setx IPSC_AZURE_CLIENT_ID `"$clientId`"" -ForegroundColor Gray
 Write-Host "  setx IPSC_CREDENTIAL_STORE_PATH `"$CredentialStorePath`"" -ForegroundColor Gray
+if ($env:IPSC_DISCORD_WEBHOOKS) {
+    Write-Host "  setx IPSC_DISCORD_WEBHOOKS `"$($env:IPSC_DISCORD_WEBHOOKS)`"" -ForegroundColor Gray
+}
 Write-Host ""
 Write-Host "Option 2: Using System Properties > Environment Variables (GUI)" -ForegroundColor Yellow
 Write-Host "  Click Start > Settings > System > About > Advanced system settings" -ForegroundColor Gray
 Write-Host "  Click 'Environment Variables' > New (User or System)" -ForegroundColor Gray
 Write-Host ""
 
-Write-Host "`nNext step: Run Scheduler.ps1 to test email notifications" -ForegroundColor Yellow
+Write-Host "`nNext step: Run Scheduler.ps1 to test email/Discord notifications" -ForegroundColor Yellow
 Write-Host "Command: .\Scheduler.ps1 -RunOnce`n" -ForegroundColor Yellow
 
 exit 0

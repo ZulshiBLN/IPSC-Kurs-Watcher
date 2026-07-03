@@ -80,17 +80,9 @@
     "discord": {
       "enabled": false,
       "_comment_enabled": "Set to true to enable Discord notifications",
-      "webhook_urls": [
-        "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
-      ],
-      "_comment_webhook": "Get webhook URL: Right-click channel → Integrations → Webhooks → New Webhook → Copy URL",
-      "mention_on_new": true,
-      "_comment_mention": "Set to true to @mention user/role when new courses detected",
-      "mention_user_id": null,
-      "_comment_mention_user": "Discord user ID (optional, if mention_on_new=true)",
-      "mention_role_id": null,
-      "_comment_mention_role": "Discord role ID (optional, if mention_on_new=true)",
-      "include_url_buttons": true,
+      "_comment_webhooks": "Discord webhook URLs are configured via IPSC_DISCORD_WEBHOOKS environment variable (comma-separated)",
+      "_comment_setup": "Run: setx IPSC_DISCORD_WEBHOOKS \"https://discord.com/api/webhooks/ID/TOKEN,...\"",
+      "webhook_urls": [],
       "retry_attempts": 3,
       "timeout_seconds": 30
     }
