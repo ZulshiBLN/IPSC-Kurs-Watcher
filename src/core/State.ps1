@@ -239,7 +239,7 @@ function Update-StateWithCourse {
     param([ValidateNotNull()][hashtable]$State, [ValidateNotNull()][object[]]$CurrentCourses)
 
     if ($PSCmdlet.ShouldProcess("state.last_notified", "Update course state")) {
-        $trackedCourses = if ($State.last_notified) { $State.last_notified } else { @() }
+        $trackedCourses = if ($null -ne $State.last_notified) { $State.last_notified } else { @() }
         $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $trackedCourses
         $State.last_notified = $mergeResult.updated_state
     }
