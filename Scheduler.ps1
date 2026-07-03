@@ -31,6 +31,42 @@ param(
 $ErrorActionPreference = 'Continue'
 
 # ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+function Initialize-AppIdentity {
+    <#
+    .SYNOPSIS
+    Initialize IPSC Kurs Monitor app identity (creates registry entry if needed).
+    #>
+    $appName = "IPSC Kurs Monitor"
+    $regPath = "HKCU:\Software\Classes\CLSID\{12345678-1234-1234-1234-123456789012}"
+    $appUserModelId = "IPSC.KursMonitor"
+
+    try {
+        if (Test-Path $regPath) {
+            return
+        }
+
+        New-Item -Path $regPath -Force | Out-Null
+        Set-ItemProperty -Path $regPath -Name "(Default)" -Value $appName -Force
+        Set-ItemProperty -Path $regPath -Name "AppUserModelID" -Value $appUserModelId -Force
+
+        $localizedPath = "$regPath\LocalizedString"
+        New-Item -Path $localizedPath -Force | Out-Null
+        Set-ItemProperty -Path $localizedPath -Name "(Default)" -Value $appName -Force
+
+        $iconPath = "$regPath\DefaultIcon"
+        New-Item -Path $iconPath -Force | Out-Null
+        $powershellExe = (Get-Command powershell.exe).Source
+        Set-ItemProperty -Path $iconPath -Name "(Default)" -Value $powershellExe -Force
+    }
+    catch {
+        # Non-blocking warning if registration fails
+    }
+}
+
+# ============================================================================
 # MODULE LOADING (strict order, no circular deps)
 # ============================================================================
 
@@ -47,6 +83,9 @@ try {
 
     # Initialize logging
     Initialize-Logging -LogDir 'data/logs' -LogLevel 'INFO' -Format 'json' -RetentionDays 30
+
+    # Initialize app identity for Toast notifications
+    Initialize-AppIdentity
 
     Write-Log -Level INFO -Message "Core modules loaded"
 
