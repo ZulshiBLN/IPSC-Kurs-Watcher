@@ -133,7 +133,7 @@ function Merge-CourseState {
     Hashtable with 'alerts' (new, reduced, sold_out) and 'updated_state' (merged courses for state.json)
     #>
     [CmdletBinding()]
-    param([ValidateNotNull()][object[]]$CurrentCourses, [ValidateNotNull()][object[]]$TrackedCourses)
+    param([object[]]$CurrentCourses, [object[]]$TrackedCourses)
 
     $alerts = @{ new = @(); reduced = @(); sold_out = @() }
     $mergedState = @()
