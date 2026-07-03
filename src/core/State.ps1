@@ -34,7 +34,8 @@ function Get-State {
     if (Test-Path $StateFile) {
         try {
             $stateJson = Get-Content $StateFile -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
-            return @{ version = $stateJson.version; last_poll = $stateJson.last_poll; last_notified = @($stateJson.last_notified) }
+            $trackedCourses = if ($stateJson.last_notified) { @($stateJson.last_notified) } else { @() }
+            return @{ version = $stateJson.version; last_poll = $stateJson.last_poll; last_notified = $trackedCourses }
         }
         catch { return @{ version = 1; last_poll = [datetime]::UtcNow.ToString('o'); last_notified = @() } }
     }
