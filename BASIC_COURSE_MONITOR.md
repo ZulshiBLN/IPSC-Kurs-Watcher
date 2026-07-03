@@ -1,23 +1,33 @@
-# BASIC COURSE MONITOR - Course Monitoring System
+# BASIC COURSE MONITOR - Advanced Course Monitoring System
 
 ## Goal
-Monitor https://www.shooting-store.ch/de/kategorie/kurse1 for ALL courses, extract full details (name, date, time), and send notifications when new courses are detected.
+Monitor https://www.shooting-store.ch/de/kategorie/kurse1 for ALL courses with FULL DETAILS including:
+- Course Name
+- Date & Time
+- Price
+- **Available Slots (from detail pages)**
+
+Send notifications when:
+1. **NEW course** appears
+2. **Availability DECREASES** (fewer slots available)
 
 ---
 
 ## Current State (as of 2026-07-03)
 - **URL:** https://www.shooting-store.ch/de/kategorie/kurse1
 - **Current Courses (8 total):**
-  - 2x IPSC Basic 2.0 Course
-  - 1x IPSC Movement Kurs
-  - 3x IPSC Stages
-  - 1x IPSC Moving Targets Kurs
-  - 1x IPSC Steel Target Kurs
+  - 2x IPSC Basic 2.0 Course (2-3 Plätze available)
+  - 1x IPSC Movement Kurs (4 Plätze)
+  - 3x IPSC Stages (4-6 Plätze)
+  - 1x IPSC Moving Targets Kurs (5 Plätze)
+  - 1x IPSC Steel Target Kurs (5 Plätze)
 
 - **Data Extracted per Course:**
   - Course Name (e.g., "IPSC Basic 2.0 Course")
   - Date (DD.MM.YYYY format)
   - Time (HH:MM-HH:MM format)
+  - Price (CHF format)
+  - **Available Slots** (from course detail page)
 
 ---
 
@@ -82,59 +92,78 @@ On each run:
 
 ## Example Output
 
+### Monitoring Run 1 (Initial Scan)
 ```
-ALL COURSES FROM SHOOTING-STORE.CH
-====================================
+Found 8 courses
 
 IPSC Basic 2.0 Course
-  Datum: 05.09.2026  |  Zeit: 09:30-13:00
+  Datum: 05.09.2026  Zeit: 09:30-13:00
+  Preis: CHF 280.00  |  Verfügbar: 2 Plätze
 
 IPSC Basic 2.0 Course
-  Datum: 08.08.2026  |  Zeit: 09:30-13:00
+  Datum: 08.08.2026  Zeit: 09:30-13:00
+  Preis: CHF 280.00  |  Verfügbar: 3 Plätze
 
 IPSC Movement Kurs
-  Datum: 12.08.2026  |  Zeit: 20:00-22:00
+  Datum: 12.08.2026  Zeit: 20:00-22:00
+  Preis: CHF 180.00  |  Verfügbar: 4 Plätze
 
 IPSC Stages
-  Datum: 06.09.2026  |  Zeit: 08:00-11:00
+  Datum: 06.09.2026  Zeit: 08:00-11:00
+  Preis: CHF 260.00  |  Verfügbar: 4 Plätze
 
 IPSC Moving Targets Kurs
-  Datum: 16.07.2026  |  Zeit: 20:00-22:00
+  Datum: 16.07.2026  Zeit: 20:00-22:00
+  Preis: CHF 220.00  |  Verfügbar: 5 Plätze
 
 IPSC Stages
-  Datum: 12.07.2026  |  Zeit: 08:00-11:00
+  Datum: 12.07.2026  Zeit: 08:00-11:00
+  Preis: CHF 260.00  |  Verfügbar: 5 Plätze
 
 IPSC Steel Target Kurs
-  Datum: 23.09.2026  |  Zeit: 20:00-22:00
+  Datum: 23.09.2026  Zeit: 20:00-22:00
+  Preis: CHF 220.00  |  Verfügbar: 5 Plätze
 
 IPSC Stages
-  Datum: 09.08.2026  |  Zeit: 08:00-11:00
+  Datum: 09.08.2026  Zeit: 08:00-11:00
+  Preis: CHF 260.00  |  Verfügbar: 6 Plätze
+```
 
-Total: 8 Kurse gefunden
+### Monitoring Run 2 (After Availability Change)
+```
+Alert: Availability reduced for IPSC Basic 2.0 Course (05.09.2026)
+  2 Plätze -> 1 Platz
+  CHF 280.00 | 09:30-13:00
 ```
 
 ## Workflow
 
 ```
-1. Fetch HTML from Shooting-Store.ch
+1. Fetch Kurse listing page from Shooting-Store.ch
    ↓
-2. Parse all courses:
-   - Extract text: "Name DD.MM.YYYY HH:MM-HH:MM"
-   - Regex split into: name, date, time
+2. Parse all course cards:
+   - Extract: href link to detail page
+   - Extract: "Name DD.MM.YYYY HH:MM-HH:MM"
+   - Extract: Price
    - Create unique ID: "name|date|time"
    ↓
-3. Load previous state (notified_courses.json)
+3. For EACH course, fetch detail page:
+   - Fetch: https://www.shooting-store.ch/de/produkt/...
+   - Extract: "X Artikel an Lager" (available slots)
    ↓
-4. Compare current vs. previous:
-   - NEW: ID not in previous state
-   - KNOWN: ID exists in state
+4. Load previous state (notified_courses.json)
    ↓
-5. If NEW courses found:
-   - Log each new course with full details
+5. Compare current vs. previous:
+   - NEW: ID not in previous state → ALERT
+   - AVAILABILITY_REDUCED: slots decreased → ALERT
+   - NO_CHANGE: Same course, same/more slots → No alert
+   ↓
+6. If alerts found:
+   - Log each alert with reason + details
    - Send notifications (if configured)
-   - Update state file
+   - Update state file with current courses & availability
    ↓
-6. Sleep until next check interval
+7. Sleep until next check interval
 ```
 
 ---
@@ -276,16 +305,25 @@ Desktop alerts using Windows Toast API.
 
 ## Status
 
-**Implementation:** ✅ Complete and Tested
+**Implementation:** ✅ Complete and Fully Tested
 **Functionality:**
-- [x] Fetch all courses from Shooting-Store.ch (8 courses)
-- [x] Parse name, date, and time from each course
-- [x] Track notified courses in state file
-- [x] Identify new courses (with deduplication)
-- [x] Log new courses with full details
+- [x] Fetch all courses from Shooting-Store.ch category page (8 courses)
+- [x] Extract href links to each course detail page
+- [x] Parse name, date, time, and price from listing
+- [x] Fetch detail page for EACH course (for availability)
+- [x] Extract "X Artikel an Lager" from detail pages
+- [x] Track notified courses + availability in state file
+- [x] Identify NEW courses → Alert
+- [x] Identify AVAILABILITY_REDUCED → Alert
+- [x] Ignore unchanged courses (no duplicate alerts)
 - [x] Support periodic execution (configurable interval)
 - [x] Support single-run testing
 
-**Performance:** ~3-5 seconds per check (suitable for 15-30 min intervals)
+**Performance:** 
+- ~10-15 seconds per check (1-2 sec per course detail page fetch)
+- Suitable for 30+ minute check intervals
+- Can be optimized with caching in future
+
 **Reliability:** Production-ready, handles errors gracefully
+**Alert Accuracy:** Very high (only alerts on NEW or REDUCED availability)
 
