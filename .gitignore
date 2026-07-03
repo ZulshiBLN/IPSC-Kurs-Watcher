@@ -1,0 +1,18 @@
+# Local development
+.env.local
+*.local
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Temporary
+tmp/
+temp/
