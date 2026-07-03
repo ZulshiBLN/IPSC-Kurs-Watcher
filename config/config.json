@@ -61,11 +61,11 @@
                                             "main_page_url":  "https://www.shooting-store.ch/de/kategorie/kurse1"
                                         },
                       "email":  {
-                                    "enabled":  true,
+                                    "enabled":  false,
                                     "retry_attempts":  3,
                                     "timeout_seconds":  30,
                                     "recipients":  [
-                                                       "michel@brosche-swiss.ch"
+                                                       "your-email@example.com"
                                                    ],
                                     "token_cache_path":  "data/.token_cache.json",
                                     "provider":  "graph"
