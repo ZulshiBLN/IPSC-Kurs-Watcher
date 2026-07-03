@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "last_poll": "2026-07-03T14:30:00.0000000Z",
+  "last_notified": [
+    {
+      "id": "IPSC Basic 2.0 Course|08.08.2026|09:30-13:00",
+      "name": "IPSC Basic 2.0 Course",
+      "date": "08.08.2026",
+      "time": "09:30-13:00",
+      "availability": 3,
+      "price": "CHF 280.00",
+      "url": "https://www.shooting-store.ch/de/produkt/ipsc-basic-2-course-20122025-1630-2000",
+      "monitor_id": "shooting-store",
+      "notified_at": "2026-07-03T14:30:00.0000000Z"
+    },
+    {
+      "id": "IPSC Basic 2.0 Course|05.09.2026|09:30-13:00",
+      "name": "IPSC Basic 2.0 Course",
+      "date": "05.09.2026",
+      "time": "09:30-13:00",
+      "availability": 2,
+      "price": "CHF 280.00",
+      "url": "https://www.shooting-store.ch/de/produkt/copy-ipsc-basic-20-course-08082026-0930-1300",
+      "monitor_id": "shooting-store",
+      "notified_at": "2026-07-03T14:30:00.0000000Z"
+    },
+    {
+      "id": "IPSC Stages|12.07.2026|08:00-11:00",
+      "name": "IPSC Stages",
+      "date": "12.07.2026",
+      "time": "08:00-11:00",
+      "availability": 5,
+      "price": "CHF 260.00",
+      "url": "https://www.shooting-store.ch/de/produkt/ipsc-training-20022022-0800-1100",
+      "monitor_id": "shooting-store",
+      "notified_at": "2026-07-03T14:30:00.0000000Z"
+    },
+    {
+      "id": "IPSC Moving Targets Kurs|16.07.2026|20:00-22:00",
+      "name": "IPSC Moving Targets Kurs",
+      "date": "16.07.2026",
+      "time": "20:00-22:00",
+      "availability": 5,
+      "price": "CHF 220.00",
+      "url": "https://www.shooting-store.ch/de/produkt/ipsc-moving-targets-kurs-21022026-0800-1100",
+      "monitor_id": "shooting-store",
+      "notified_at": "2026-07-03T14:30:00.0000000Z"
+    },
+    {
+      "id": "IPSC Stages|06.09.2026|08:00-11:00",
+      "name": "IPSC Stages",
+      "date": "06.09.2026",
+      "time": "08:00-11:00",
+      "availability": 4,
+      "price": "CHF 260.00",
+      "url": "https://www.shooting-store.ch/de/produkt/ipsc-training-27032022-0800-1100",
+      "monitor_id": "shooting-store",
+      "notified_at": "2026-07-03T14:30:00.0000000Z"
+    }
+  ]
+}
