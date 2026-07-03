@@ -112,7 +112,7 @@ function _SendToastViaWinRT {
 
         $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
 
-        $appId = 'Microsoft.PowerShell_31bf3856ad364e35_15.1.0.0_x64__8wekyb3d8bbwe'
+        $appId = 'IPSC.KursMonitor'
 
         [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($appId).Show($toast)
 
