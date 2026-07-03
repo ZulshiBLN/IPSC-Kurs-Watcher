@@ -11,7 +11,7 @@ in Toast notifications instead of "Microsoft.PowerShell...".
 Needs to run once per user. No administrator privileges required.
 
 .EXAMPLE
-.\Install-AppIdentity.ps1
+.\Set-AppIdentity.ps1
 #>
 
 $appName = "IPSC Kurs Monitor"
