@@ -915,7 +915,7 @@ Negative:
 
 ## ADR-010: Security & Credential Management
 
-**Status:** [ACCEPTED] ✅
+**Status:** [ACCEPTED] ✅ (Implemented v0.1.1, Code Quality v0.2.0)
 
 **Context:**
 v0.1.0 implementierte Email (OAuth2) und Discord notifications, aber mit Sicherheitslücken:
