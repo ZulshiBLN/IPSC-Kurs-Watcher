@@ -16,7 +16,7 @@ Describe "Send-ToastNotification" {
 
     Context "Configuration Validation" {
         It "returns silently when disabled" {
-            $alerts = @(@{ alert_reason = 'NEW_COURSE'; name = 'Test'; time = '19:00'; availability = 3; price = 'CHF 100'; url = 'https://example.com' })
+            $alerts = @(@{ alert_reason = 'NEW'; name = 'Test'; time = '19:00'; availability = 3; price = 'CHF 100'; url = 'https://example.com' })
             $config = @{ enabled = $false }
 
             { Send-ToastNotification -Alerts $alerts -Config $config } | Should -Not -Throw
@@ -29,7 +29,7 @@ Describe "Send-ToastNotification" {
         }
 
         It "requires Config parameter (mandatory)" {
-            $alerts = @(@{ alert_reason = 'NEW_COURSE'; name = 'Test'; time = '19:00'; availability = 3; price = 'CHF 100'; url = 'https://example.com' })
+            $alerts = @(@{ alert_reason = 'NEW'; name = 'Test'; time = '19:00'; availability = 3; price = 'CHF 100'; url = 'https://example.com' })
 
             { Send-ToastNotification -Alerts $alerts } | Should -Throw
         }
@@ -37,7 +37,7 @@ Describe "Send-ToastNotification" {
 
     Context "Alert Emoji Mapping" {
         It "_GetAlertEmoji function exists and returns value" {
-            $emoji = _GetAlertEmoji -AlertReason 'NEW_COURSE'
+            $emoji = _GetAlertEmoji -AlertReason 'NEW'
             $emoji | Should -Not -BeNullOrEmpty
         }
     }

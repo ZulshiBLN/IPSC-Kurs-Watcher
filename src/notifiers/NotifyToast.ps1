@@ -25,7 +25,7 @@ function _GetAlertEmoji {
     param([string]$AlertReason)
 
     switch ($AlertReason) {
-        'NEW_COURSE' { return '🟢' }
+        'NEW' { return '🟢' }
         'AVAILABILITY_REDUCED' { return '🟡' }
         'SOLD_OUT' { return '🔴' }
         default { return '⚪' }

@@ -115,7 +115,7 @@ function Merge-CourseState {
         }
         else {
             # Course is NEW
-            $current | Add-Member -NotePropertyName 'alert_reason' -NotePropertyValue 'NEW_COURSE' -Force
+            $current | Add-Member -NotePropertyName 'alert_reason' -NotePropertyValue 'NEW' -Force
             $alerts.new += $current
             # ADD to mergedState
             $mergedState += @{
