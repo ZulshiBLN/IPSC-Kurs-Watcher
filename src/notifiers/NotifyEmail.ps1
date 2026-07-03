@@ -507,11 +507,6 @@ function Send-EmailNotification {
             return
         }
 
-        if (-not $Config.recipients -or $Config.recipients.Count -eq 0) {
-            Write-Log -Level WARN -Message "Email notifier disabled: no recipients configured"
-            return
-        }
-
         # Get credentials from encrypted credential store
         if (-not $credStorePath) {
             $credStorePath = "$env:APPDATA\IPSC-Kurs-Watcher\credentials"
@@ -545,14 +540,14 @@ function Send-EmailNotification {
         # Create subject with proper UTF-8 encoding for special characters (ü=252, ä=228)
         $subject = "IPSC Kurs Watcher - Neue Kurse und Verf" + [char]252 + "gbarkeits" + [char]228 + "nderungen"
 
-        # Send email with retry logic
+        # Send email with retry logic (userId is the recipient's email address)
         $sent = _SendMailViaGraph -AccessToken $token.access_token -UserId $userId `
-            -Recipients $Config.recipients -Subject $subject -HtmlBody $htmlBody `
+            -Recipients @($userId) -Subject $subject -HtmlBody $htmlBody `
             -TimeoutSeconds $Config.timeout_seconds -MaxRetries $Config.retry_attempts
 
         if ($sent) {
             Write-Log -Level INFO -Message "Email notification sent" `
-                -Context @{ alert_count = $Alerts.Count; recipients = $Config.recipients.Count }
+                -Context @{ alert_count = $Alerts.Count; recipient = $userId }
         }
     }
     catch {

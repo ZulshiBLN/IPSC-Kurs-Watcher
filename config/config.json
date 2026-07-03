@@ -61,24 +61,14 @@
                                             "main_page_url":  "https://www.shooting-store.ch/de/kategorie/kurse1"
                                         },
                       "email":  {
-                                    "enabled":  false,
-                                    "retry_attempts":  3,
-                                    "timeout_seconds":  30,
-                                    "recipients":  [
-                                                       "michel@brosche-swiss.ch"
-                                                   ],
+                                    "enabled":  true,
+                                    "provider":  "graph",
                                     "token_cache_path":  "data/.token_cache.json",
-                                    "provider":  "graph"
+                                    "timeout_seconds":  30,
+                                    "retry_attempts":  3
                                 },
                       "discord":  {
                                       "enabled":  false,
-                                      "webhook_urls":  [
-                                                           "https://discord.com/api/webhooks/..."
-                                                       ],
-                                      "mention_on_new":  true,
-                                      "mention_user_id":  null,
-                                      "mention_role_id":  null,
-                                      "include_url_buttons":  true,
                                       "retry_attempts":  3,
                                       "timeout_seconds":  30
                                   }

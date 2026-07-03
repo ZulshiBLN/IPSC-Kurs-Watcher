@@ -120,7 +120,7 @@
       "properties": {
         "windows_toast": {
           "type": "object",
-          "description": "Windows Toast notifications (v0.1)",
+          "description": "Windows Toast notifications",
           "properties": {
             "enabled": {
               "type": "boolean",
@@ -160,105 +160,48 @@
         },
         "email": {
           "type": "object",
-          "description": "Email notifications (v0.1 planned)",
+          "description": "Email notifications via Microsoft Graph API (OAuth2)",
           "properties": {
             "enabled": {
               "type": "boolean",
               "default": false,
               "description": "Enable/disable email notifications"
             },
-            "smtp_host": {
+            "provider": {
               "type": "string",
-              "description": "SMTP server hostname"
+              "enum": ["graph"],
+              "default": "graph",
+              "description": "Email provider (currently only Microsoft Graph)"
             },
-            "smtp_port": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 65535,
-              "description": "SMTP server port"
-            },
-            "use_tls": {
-              "type": "boolean",
-              "default": true,
-              "description": "Use TLS/SSL for SMTP"
-            },
-            "from_address": {
+            "token_cache_path": {
               "type": "string",
-              "format": "email",
-              "description": "Sender email address"
-            },
-            "from_display_name": {
-              "type": "string",
-              "description": "Sender display name"
-            },
-            "smtp_user": {
-              "type": "string",
-              "description": "SMTP authentication username"
-            },
-            "smtp_password": {
-              "type": "string",
-              "description": "SMTP authentication password (stored encrypted via DPAPI)"
-            },
-            "recipients": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "format": "email"
-              },
-              "description": "Email recipient addresses (primary + BCC)"
+              "default": "data/.token_cache.json",
+              "description": "Path to cache OAuth2 tokens (encrypted)"
             },
             "retry_attempts": {
               "type": "integer",
               "default": 3,
               "minimum": 1,
-              "description": "SMTP retry attempts"
+              "description": "Retry attempts on send failure"
             },
             "timeout_seconds": {
               "type": "integer",
               "default": 30,
               "minimum": 5,
-              "description": "SMTP connection timeout"
-            },
-            "template_file": {
-              "type": "string",
-              "description": "Path to HTML email template"
+              "description": "HTTP timeout for Graph API calls"
             }
-          }
+          },
+          "required": ["enabled"],
+          "additionalProperties": false
         },
         "discord": {
           "type": "object",
-          "description": "Discord webhook notifications (v0.1 planned)",
+          "description": "Discord webhook notifications",
           "properties": {
             "enabled": {
               "type": "boolean",
               "default": false,
               "description": "Enable/disable Discord notifications"
-            },
-            "webhook_urls": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "format": "uri"
-              },
-              "description": "Discord webhook URLs (can be multiple channels)"
-            },
-            "mention_on_new": {
-              "type": "boolean",
-              "default": true,
-              "description": "Mention user/role when NEW courses detected"
-            },
-            "mention_user_id": {
-              "type": ["string", "null"],
-              "description": "Discord user ID to mention (optional)"
-            },
-            "mention_role_id": {
-              "type": ["string", "null"],
-              "description": "Discord role ID to mention (optional)"
-            },
-            "include_url_buttons": {
-              "type": "boolean",
-              "default": true,
-              "description": "Include clickable course URL buttons"
             },
             "retry_attempts": {
               "type": "integer",
@@ -272,7 +215,10 @@
               "minimum": 5,
               "description": "Webhook request timeout"
             }
-          }
+          },
+          "required": ["enabled"],
+          "additionalProperties": false,
+          "description": "Note: Webhook URLs configured via IPSC_DISCORD_WEBHOOKS environment variable"
         }
       }
     },

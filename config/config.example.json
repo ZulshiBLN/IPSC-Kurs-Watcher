@@ -60,13 +60,10 @@
       "enabled": false,
       "_comment_enabled": "Set to true to enable email notifications",
       "_comment_provider": "Email notifications via Microsoft Graph API (OAuth2)",
-      "_comment_credentials": "Credentials configured via environment variables: IPSC_AZURE_TENANT_ID, IPSC_AZURE_CLIENT_ID, IPSC_AZURE_USER_ID",
-      "_comment_setup": "Run Setup-AzureCredentials.ps1 to configure Azure AD credentials",
+      "_comment_credentials": "All credentials and recipient configured via environment variables",
+      "_comment_variables": "IPSC_AZURE_TENANT_ID, IPSC_AZURE_CLIENT_ID, IPSC_AZURE_USER_ID (recipient email)",
+      "_comment_setup": "Run scripts/Setup-AzureCredentials.ps1 to configure interactively",
       "provider": "graph",
-      "recipients": [
-        "your-email@example.com"
-      ],
-      "_comment_recipients": "List of email addresses to notify",
       "retry_attempts": 3,
       "timeout_seconds": 30,
       "token_cache_path": "data/.token_cache.json"
@@ -75,9 +72,8 @@
     "discord": {
       "enabled": false,
       "_comment_enabled": "Set to true to enable Discord notifications",
-      "_comment_webhooks": "Discord webhook URLs are configured via IPSC_DISCORD_WEBHOOKS environment variable (comma-separated)",
-      "_comment_setup": "Run: setx IPSC_DISCORD_WEBHOOKS \"https://discord.com/api/webhooks/ID/TOKEN,...\"",
-      "webhook_urls": [],
+      "_comment_webhooks": "Discord webhook URLs configured via IPSC_DISCORD_WEBHOOKS environment variable",
+      "_comment_setup": "setx IPSC_DISCORD_WEBHOOKS \"https://discord.com/api/webhooks/ID/TOKEN,https://discord.com/api/webhooks/ID2/TOKEN2\"",
       "retry_attempts": 3,
       "timeout_seconds": 30
     }

@@ -1,4 +1,5 @@
 ﻿Add-Type -AssemblyName System.Security
+Add-Type -AssemblyName System.Web
 
 $ConfigPath = "config/config.json"
 $CredentialStorePath = "$env:APPDATA\IPSC-Kurs-Watcher\credentials"
@@ -24,14 +25,18 @@ function Write-Error-Custom {
 
 function _TestAzureConnection {
     param([string]$TenantId, [string]$ClientId, [string]$ClientSecret)
+
+    Write-Host "[DEBUG] TenantId length: $($TenantId.Length)" -ForegroundColor Gray
+    Write-Host "[DEBUG] ClientId length: $($ClientId.Length)" -ForegroundColor Gray
+    Write-Host "[DEBUG] ClientSecret length: $($ClientSecret.Length)" -ForegroundColor Gray
+
     try {
         $tokenUri = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
-        $body = @{
-            client_id     = $ClientId
-            client_secret = $ClientSecret
-            scope         = "https://graph.microsoft.com/.default"
-            grant_type    = "client_credentials"
-        }
+        Write-Host "[DEBUG] Token URI: $tokenUri" -ForegroundColor Gray
+
+        $body = "client_id=$([System.Web.HttpUtility]::UrlEncode($ClientId))&client_secret=$([System.Web.HttpUtility]::UrlEncode($ClientSecret))&scope=$([System.Web.HttpUtility]::UrlEncode('https://graph.microsoft.com/.default'))&grant_type=client_credentials"
+        Write-Host "[DEBUG] Request body (first 100 chars): $($body.Substring(0, [Math]::Min(100, $body.Length)))..." -ForegroundColor Gray
+
         $response = Invoke-WebRequest -Uri $tokenUri -Method POST -Body $body -ContentType "application/x-www-form-urlencoded" -TimeoutSec 10 -ErrorAction Stop -UseBasicParsing
         $token = $response.Content | ConvertFrom-Json
         if ($token.access_token) {
@@ -41,7 +46,11 @@ function _TestAzureConnection {
     }
     catch {
         $errorMsg = $_.Exception.Message
-        if ($errorMsg -match "401|Unauthorized") { $errorMsg = "Invalid Client ID, Client Secret, or Tenant ID" }
+        $errorResponse = $_.Exception.Response.StatusCode
+        Write-Host "[DEBUG] HTTP Status Code: $errorResponse" -ForegroundColor Gray
+        Write-Host "[DEBUG] Error Message: $errorMsg" -ForegroundColor Gray
+
+        if ($errorMsg -match "401|Unauthorized" -or $errorResponse -eq "Unauthorized") { $errorMsg = "Invalid Client ID, Client Secret, or Tenant ID" }
         elseif ($errorMsg -match "403|Forbidden") { $errorMsg = "Permission denied. Check Tenant ID and credentials." }
         return @{ success = $false; message = "OAuth2 failed: $errorMsg" }
     }
@@ -75,25 +84,15 @@ if (-not $clientId) {
     exit 1
 }
 
-$secureSecret = Read-Host "Client Secret (will be masked)" -AsSecureString
-if (-not $secureSecret -or $secureSecret.Length -eq 0) {
+$clientSecretPlain = Read-Host "Client Secret (will be masked)"
+if (-not $clientSecretPlain -or $clientSecretPlain.Length -eq 0) {
     Write-Error-Custom "Client Secret is required"
-    exit 1
-}
-
-try {
-    $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToCoTaskMemUnicode($secureSecret)
-    $clientSecret = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($ptr)
-    [System.Runtime.InteropServices.Marshal]::ZeroFreeCoTaskMemUnicode($ptr)
-}
-catch {
-    Write-Error-Custom "Failed to process Client Secret: $_"
     exit 1
 }
 
 Write-Header "Testing Azure Credentials"
 
-$testResult = _TestAzureConnection -TenantId $tenantId -ClientId $clientId -ClientSecret $clientSecret
+$testResult = _TestAzureConnection -TenantId $tenantId -ClientId $clientId -ClientSecret $clientSecretPlain
 
 if ($testResult.success) {
     Write-Success $testResult.message
@@ -112,7 +111,7 @@ try {
     }
 
     $credentialFile = Join-Path $CredentialStorePath "IPSC-Kurs-Watcher-Secret.bin"
-    $secretBytes = [System.Text.Encoding]::UTF8.GetBytes($clientSecret)
+    $secretBytes = [System.Text.Encoding]::UTF8.GetBytes($clientSecretPlain)
     $encryptedBytes = [System.Security.Cryptography.ProtectedData]::Protect($secretBytes, $null, [System.Security.Cryptography.DataProtectionScope]::LocalMachine)
     [System.IO.File]::WriteAllBytes($credentialFile, $encryptedBytes)
     Write-Success "Client Secret stored in: $credentialFile"
