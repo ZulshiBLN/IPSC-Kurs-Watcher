@@ -34,6 +34,7 @@ function Invoke-FilterPipeline {
     .NOTES
     Returns empty array for null/empty input. Each filter is optional.
     #>
+    [CmdletBinding()]
     param([object[]]$Courses, [object]$FilterConfig)
     if (-not $Courses) { return @() }
     $result = $Courses

@@ -25,6 +25,7 @@ function Test-CourseType {
     .NOTES
     Uses PowerShell -match operator (case-insensitive regex).
     #>
+    [CmdletBinding()]
     param([string]$CourseName, [string[]]$Patterns)
     foreach ($pattern in $Patterns) { if ($CourseName -match $pattern) { return $true } }
     return $false
@@ -59,6 +60,7 @@ function Get-FilteredCoursesByType {
     .NOTES
     Matches are case-insensitive via regex. Returns empty array for null/empty input.
     #>
+    [CmdletBinding()]
     param([object[]]$Courses, [object[]]$TypeFilters)
     if (-not $Courses) { return @() }
     $enabledFilters = @($TypeFilters | Where-Object { $_.enabled })

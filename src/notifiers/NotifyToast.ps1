@@ -8,6 +8,9 @@ function Test-ToastSupported {
     .OUTPUTS
     Boolean - $true if Toast API available, $false otherwise
     #>
+    [CmdletBinding()]
+    param()
+
     if ([System.Environment]::OSVersion.Version.Major -lt 10) {
         return $false
     }

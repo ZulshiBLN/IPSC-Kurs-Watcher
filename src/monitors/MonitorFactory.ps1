@@ -26,6 +26,7 @@ function Get-Monitor {
     .NOTES
     Throws error if provider is unknown.
     #>
+    [CmdletBinding()]
     param([object]$Config)
     switch ($Config.provider) {
         'shooting-store' { return [CourseMonitor]::new($Config) }

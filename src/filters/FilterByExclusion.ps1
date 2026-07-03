@@ -25,6 +25,7 @@ function Get-FilteredCoursesByExclusion {
     .NOTES
     Case-insensitive regex matching. Returns all courses if patterns is null/empty.
     #>
+    [CmdletBinding()]
     param([object[]]$Courses, [string[]]$ExcludePatterns)
     if (-not $Courses -or -not $ExcludePatterns) { return $Courses }
     $filtered = @()
