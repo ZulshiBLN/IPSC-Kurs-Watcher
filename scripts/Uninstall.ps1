@@ -1,4 +1,5 @@
 #Requires -Version 5.1
+#Requires -RunAsAdministrator
 
 <#
 .SYNOPSIS
@@ -59,10 +60,6 @@ if ($final -ne 'yes') {
     exit 0
 }
 
-# Check for admin rights (needed for Scheduled Task removal)
-$isAdmin = [Security.Principal.WindowsIdentity]::GetCurrent().Groups -contains `
-    [Security.Principal.SecurityIdentifier]"S-1-5-32-544"
-
 $stepsFailed = 0
 
 # ============================================================================
@@ -71,37 +68,30 @@ $stepsFailed = 0
 
 Write-Header "Step 1: Remove Scheduled Task (Optional)"
 
-if (-not $isAdmin) {
-    Write-Host "[WARN] This step requires Administrator privileges (skipping)" -ForegroundColor Yellow
-    Write-Host "       To remove Scheduled Task, run PowerShell as Administrator and execute:" -ForegroundColor Yellow
-    Write-Host "       .\Remove-ScheduledTask.ps1`n" -ForegroundColor Gray
-}
-else {
-    $taskName = "IPSC-Kurs-Watcher"
-    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+$taskName = "IPSC-Kurs-Watcher"
+$task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 
-    if ($task) {
-        Write-Host "Found Scheduled Task: '$taskName'" -ForegroundColor Cyan
-        Write-Host ""
+if ($task) {
+    Write-Host "Found Scheduled Task: '$taskName'" -ForegroundColor Cyan
+    Write-Host ""
 
-        if (Confirm-Step "Do you want to remove this Scheduled Task?") {
-            $result = Invoke-RemoveScheduledTask
-            if ($result) {
-                Write-Success "Step 1 completed"
-            }
-            else {
-                Write-Warning-Custom "Step 1 failed"
-                $stepsFailed++
-            }
+    if (Confirm-Step "Do you want to remove this Scheduled Task?") {
+        $result = Invoke-RemoveScheduledTask
+        if ($result) {
+            Write-Success "Step 1 completed"
         }
         else {
-            Write-Host "[INFO] Step 1 skipped - Scheduled Task will remain" -ForegroundColor Gray
+            Write-Warning-Custom "Step 1 failed"
+            $stepsFailed++
         }
     }
     else {
-        Write-Host "No Scheduled Task found (was never set up)" -ForegroundColor Gray
-        Write-Host "[INFO] Step 1 skipped" -ForegroundColor Gray
+        Write-Host "[INFO] Step 1 skipped - Scheduled Task will remain" -ForegroundColor Gray
     }
+}
+else {
+    Write-Host "No Scheduled Task found (was never set up)" -ForegroundColor Gray
+    Write-Host "[INFO] Step 1 skipped" -ForegroundColor Gray
 }
 
 # ============================================================================

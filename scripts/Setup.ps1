@@ -1,4 +1,5 @@
 #Requires -Version 5.1
+#Requires -RunAsAdministrator
 
 <#
 .SYNOPSIS
@@ -48,15 +49,6 @@ Write-Host "  3. Environment variables" -ForegroundColor Gray
 Write-Host "  4. Scheduled Task (optional, requires admin)" -ForegroundColor Gray
 Write-Host ""
 
-# Check for admin rights (needed for Scheduled Task step)
-$isAdmin = [Security.Principal.WindowsIdentity]::GetCurrent().Groups -contains `
-    [Security.Principal.SecurityIdentifier]"S-1-5-32-544"
-
-if (-not $isAdmin) {
-    Write-Host "[WARN] This PowerShell session is NOT running as Administrator" -ForegroundColor Yellow
-    Write-Host "       You can complete steps 1-3, but Scheduled Task setup (step 4) requires admin." -ForegroundColor Yellow
-    Write-Host ""
-}
 
 # ============================================================================
 # STEP 1: APP IDENTITY
@@ -137,32 +129,24 @@ else {
 # STEP 4: SCHEDULED TASK (OPTIONAL, REQUIRES ADMIN)
 # ============================================================================
 
-Write-Header "Step 4: Create Scheduled Task (Optional - Requires Admin)"
+Write-Header "Step 4: Create Scheduled Task (Optional)"
 
 Write-Host "This creates an automated task to run IPSC Kurs Watcher at regular intervals." -ForegroundColor Gray
 Write-Host "(You can skip this and run monitoring manually with .\Scheduler.ps1)" -ForegroundColor Gray
 Write-Host ""
 
-if (-not $isAdmin) {
-    Write-Host "[WARN] This step requires Administrator privileges" -ForegroundColor Yellow
-    Write-Host "       Please run: powershell -RunAsAdministrator" -ForegroundColor Yellow
-    Write-Host "       Then run: .\Set-ScheduledTask.ps1" -ForegroundColor Gray
+if (Confirm-Step "Do you want to set up the Scheduled Task now?") {
     Write-Host ""
-}
-else {
-    if (Confirm-Step "Do you want to set up the Scheduled Task now?") {
-        Write-Host ""
-        $result = Invoke-SetScheduledTask
-        if ($result) {
-            Write-Success "Step 4 completed"
-        }
-        else {
-            Write-Host "[WARN] Step 4 skipped or failed" -ForegroundColor Yellow
-        }
+    $result = Invoke-SetScheduledTask
+    if ($result) {
+        Write-Success "Step 4 completed"
     }
     else {
-        Write-Host "[INFO] Step 4 skipped - you can run later with: .\Set-ScheduledTask.ps1" -ForegroundColor Gray
+        Write-Host "[WARN] Step 4 skipped or failed" -ForegroundColor Yellow
     }
+}
+else {
+    Write-Host "[INFO] Step 4 skipped - you can run later with: .\Set-ScheduledTask.ps1" -ForegroundColor Gray
 }
 
 # ============================================================================
