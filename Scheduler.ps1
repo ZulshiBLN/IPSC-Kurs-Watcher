@@ -192,36 +192,31 @@ function Invoke-MonitoringCycle {
         Write-Log -Level INFO -Message "Sending notifications" `
             -Context @{ new = $cycleAlerts.new.Count; reduced = $cycleAlerts.reduced.Count; sold_out = $cycleAlerts.sold_out.Count }
 
-        # v0.1: Call notifier stubs with alert types
-        if ($cycleAlerts.new.Count -gt 0) {
-            Send-EmailNotification -Alerts $cycleAlerts.new -Config $config.notifiers.email
+        # Collect all alerts
+        $allAlerts = @() + $cycleAlerts.new + $cycleAlerts.reduced + $cycleAlerts.sold_out
+
+        # Toast notifications (v0.1 - native Windows, no dependencies)
+        try {
+            Send-ToastNotification -Alerts $allAlerts -Config $config.notifiers.windows_toast
         }
-        if ($cycleAlerts.reduced.Count -gt 0) {
-            Send-EmailNotification -Alerts $cycleAlerts.reduced -Config $config.notifiers.email
-        }
-        if ($cycleAlerts.sold_out.Count -gt 0) {
-            Send-EmailNotification -Alerts $cycleAlerts.sold_out -Config $config.notifiers.email
+        catch {
+            Write-Log -Level WARN -Message "Toast notification failed" -Exception $_
         }
 
-        # Same for Discord and Toast
-        if ($cycleAlerts.new.Count -gt 0) {
-            Send-DiscordNotification -Alerts $cycleAlerts.new -Config $config.notifiers.discord
+        # Email notifications (v0.1.1 planned)
+        try {
+            Send-EmailNotification -Alerts $allAlerts -Config $config.notifiers.email
         }
-        if ($cycleAlerts.reduced.Count -gt 0) {
-            Send-DiscordNotification -Alerts $cycleAlerts.reduced -Config $config.notifiers.discord
-        }
-        if ($cycleAlerts.sold_out.Count -gt 0) {
-            Send-DiscordNotification -Alerts $cycleAlerts.sold_out -Config $config.notifiers.discord
+        catch {
+            Write-Log -Level WARN -Message "Email notification failed" -Exception $_
         }
 
-        if ($cycleAlerts.new.Count -gt 0) {
-            Send-ToastNotification -Alerts $cycleAlerts.new -Config $config.notifiers.windows_toast
+        # Discord notifications (v0.1.2 planned)
+        try {
+            Send-DiscordNotification -Alerts $allAlerts -Config $config.notifiers.discord
         }
-        if ($cycleAlerts.reduced.Count -gt 0) {
-            Send-ToastNotification -Alerts $cycleAlerts.reduced -Config $config.notifiers.windows_toast
-        }
-        if ($cycleAlerts.sold_out.Count -gt 0) {
-            Send-ToastNotification -Alerts $cycleAlerts.sold_out -Config $config.notifiers.windows_toast
+        catch {
+            Write-Log -Level WARN -Message "Discord notification failed" -Exception $_
         }
     }
     else {
