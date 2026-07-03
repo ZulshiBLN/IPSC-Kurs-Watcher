@@ -238,7 +238,8 @@ function Update-StateWithCourse {
     param([ValidateNotNull()][hashtable]$State, [ValidateNotNull()][object[]]$CurrentCourses)
 
     if ($PSCmdlet.ShouldProcess("state.last_notified", "Update course state")) {
-        $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $State.last_notified
+        $trackedCourses = if ($State.last_notified) { $State.last_notified } else { @() }
+        $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $trackedCourses
         $State.last_notified = $mergeResult.updated_state
     }
     else {
@@ -264,6 +265,7 @@ function Get-NewCourse {
 
     Write-Log -Level WARN -Message "Get-NewCourses is deprecated, use Merge-CourseState instead"
 
-    $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $PreviousCourses
+    $trackedCourses = if ($PreviousCourses) { $PreviousCourses } else { @() }
+    $mergeResult = Merge-CourseState -CurrentCourses $CurrentCourses -TrackedCourses $trackedCourses
     return $mergeResult.alerts.new + $mergeResult.alerts.reduced
 }
