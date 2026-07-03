@@ -1,12 +1,12 @@
 
-function Get-BasicCoursesFromShootingStore {
+function Get-CoursesFromShootingStore {
     <#
     .SYNOPSIS
-    Fetches and extracts "Basic" courses from Shooting-Store.ch Kurse category.
+    Fetches and extracts ALL courses from Shooting-Store.ch Kurse category.
 
     .DESCRIPTION
-    Retrieves the course listing page, parses course names from HTML, and filters
-    for courses containing "Basic" in the name.
+    Retrieves the course listing page and parses course details (name, date, time)
+    from HTML. Returns structured course objects with full information.
 
     .PARAMETER Url
     The category page URL (default: Shooting-Store Kurse category)
@@ -15,7 +15,7 @@ function Get-BasicCoursesFromShootingStore {
     HTTP request timeout in seconds (default: 30)
 
     .EXAMPLE
-    $courses = Get-BasicCoursesFromShootingStore
+    $courses = Get-CoursesFromShootingStore
     #>
 
     param(
@@ -23,34 +23,50 @@ function Get-BasicCoursesFromShootingStore {
         [int]$TimeoutSeconds = 30
     )
 
-    Write-Verbose "[BasicCourseMonitor] Fetching courses from $Url"
+    Write-Verbose "[CourseMonitor] Fetching courses from $Url"
 
     try {
         $response = Invoke-WebRequest -Uri $Url -TimeoutSec $TimeoutSeconds -UseBasicParsing
         $html = $response.Content
 
+        # Extract course text from HTML
         [regex]$pattern = 'class="content artikel_box_name">([^<]+)</a>'
         $matches = $pattern.Matches($html)
 
-        Write-Verbose "[BasicCourseMonitor] Found $($matches.Count) total courses"
+        Write-Verbose "[CourseMonitor] Found $($matches.Count) total courses"
 
-        $basicCourses = @()
+        $courses = @()
         foreach ($match in $matches) {
-            $courseName = $match.Groups[1].Value.Trim()
-            if ($courseName -like "*Basic*") {
-                $basicCourses += @{
+            $fullText = $match.Groups[1].Value.Trim()
+
+            # Parse: "Name DD.MM.YYYY HH:MM-HH:MM"
+            # Regex: (.*?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}-\d{2}:\d{2})
+            if ($fullText -match '^(.*?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}-\d{2}:\d{2})$') {
+                $courseName = $Matches[1].Trim()
+                $courseDate = $Matches[2]
+                $courseTime = $Matches[3]
+
+                $courseId = "$courseName|$courseDate|$courseTime"
+
+                $courses += @{
+                    id = $courseId
                     name = $courseName
+                    date = $courseDate
+                    time = $courseTime
                     fetched_at = ([datetime]::UtcNow).ToString("o")
                 }
-                Write-Verbose "[BasicCourseMonitor] Found Basic course: $courseName"
+                Write-Verbose "[CourseMonitor] Parsed: $courseName ($courseDate $courseTime)"
+            }
+            else {
+                Write-Verbose "[CourseMonitor] Failed to parse: $fullText"
             }
         }
 
-        Write-Verbose "[BasicCourseMonitor] Total Basic courses found: $($basicCourses.Count)"
-        return $basicCourses
+        Write-Verbose "[CourseMonitor] Total courses parsed: $($courses.Count)"
+        return $courses
     }
     catch {
-        Write-Error "[BasicCourseMonitor] Failed to fetch courses: $_"
+        Write-Error "[CourseMonitor] Failed to fetch courses: $_"
         return @()
     }
 }
@@ -188,10 +204,10 @@ function Send-BasicCourseNotification {
     }
 
     # Format course list for notification
-    $courseList = ($Courses | ForEach-Object { "  - $($_.name)" }) -join "`n"
+    $courseList = ($Courses | ForEach-Object { "  - $($_.name) ($($_.date) $($_.time))" }) -join "`n"
 
     $message = @"
-$($Courses.Count) neue Basic Kurs(e) auf Shooting-Store.ch verfügbar:
+$($Courses.Count) neue Kurs(e) auf Shooting-Store.ch verfügbar:
 
 $courseList
 
@@ -242,13 +258,13 @@ function Invoke-BasicCourseMonitor {
 
     param(
         [hashtable]$Config,
-        [string]$StateFile = "data/notified-basic-courses.json"
+        [string]$StateFile = "data/notified-courses.json"
     )
 
-    Write-Output "[INFO] Starting Basic Course Monitor"
+    Write-Output "[INFO] Starting Course Monitor"
 
     # Step 1: Fetch current courses
-    $currentCourses = Get-BasicCoursesFromShootingStore
+    $currentCourses = Get-CoursesFromShootingStore
 
     if ($currentCourses.Count -eq 0) {
         Write-Output "[WARN] No courses found on page (might be parse error)"
@@ -266,13 +282,13 @@ function Invoke-BasicCourseMonitor {
         Send-BasicCourseNotification -Courses $newCourses -Config $Config
     }
     else {
-        Write-Output "[INFO] No new Basic courses found"
+        Write-Output "[INFO] No new courses found"
     }
 
-    # Step 5: Update state with all current Basic courses
+    # Step 5: Update state with all current courses
     Save-NotifiedCourses -Courses $currentCourses -StateFile $StateFile
 
-    Write-Output "[INFO] Basic Course Monitor completed"
+    Write-Output "[INFO] Course Monitor completed"
     return @{
         timestamp = ([datetime]::UtcNow).ToString("o")
         total_current = $currentCourses.Count

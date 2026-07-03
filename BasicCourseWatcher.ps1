@@ -23,7 +23,8 @@
 param(
     [string]$ConfigPath = "config/config.json",
     [int]$CheckInterval = 30,
-    [switch]$RunOnce
+    [switch]$RunOnce,
+    [string[]]$FilterByName = @()
 )
 
 $ErrorActionPreference = 'Continue'
@@ -31,7 +32,7 @@ $ErrorActionPreference = 'Continue'
 # Setup paths
 $ScriptRoot = Split-Path $MyInvocation.MyCommand.Path
 $MonitorPath = Join-Path $ScriptRoot "src/monitors/BasicCourseMonitor.ps1"
-$StateFile = Join-Path $ScriptRoot "data/notified-basic-courses.json"
+$StateFile = Join-Path $ScriptRoot "data/notified-courses.json"
 $LogDir = Join-Path $ScriptRoot "data/logs"
 
 # Create log directory if not exists
@@ -117,13 +118,14 @@ function Invoke-MonitoringLoop {
             $result = Invoke-BasicCourseMonitor -Config $config -StateFile $StateFile
 
             # Log results
-            Write-LogEntry "INFO" "Total Basic courses: $($result.total_current)"
+            Write-LogEntry "INFO" "Total courses: $($result.total_current)"
             Write-LogEntry "INFO" "New courses found: $($result.newly_found)"
 
             if ($result.newly_found -gt 0) {
-                Write-LogEntry "WARN" "NEW COURSES DETECTED - Notifications should be sent"
+                Write-LogEntry "ALERT" "NEW COURSES DETECTED!"
                 foreach ($course in $result.courses) {
-                    Write-LogEntry "WARN" "  - $($course.name)"
+                    Write-LogEntry "ALERT" "  [NEW] $($course.name)"
+                    Write-LogEntry "ALERT" "        Datum: $($course.date)  Zeit: $($course.time)"
                 }
             }
 
