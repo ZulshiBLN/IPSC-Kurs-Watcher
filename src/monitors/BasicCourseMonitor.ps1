@@ -5,7 +5,7 @@ function Get-CoursesFromShootingStore {
     Fetches and extracts ALL courses from Shooting-Store.ch Kurse category.
 
     .DESCRIPTION
-    Retrieves the course listing page and parses course details (name, date, time)
+    Retrieves the course listing page and parses course details (name, date, time, price)
     from HTML. Returns structured course objects with full information.
 
     .PARAMETER Url
@@ -29,36 +29,44 @@ function Get-CoursesFromShootingStore {
         $response = Invoke-WebRequest -Uri $Url -TimeoutSec $TimeoutSeconds -UseBasicParsing
         $html = $response.Content
 
-        # Extract course text from HTML
-        [regex]$pattern = 'class="content artikel_box_name">([^<]+)</a>'
-        $matches = $pattern.Matches($html)
+        # Split by artikel_box_content_wrapper (parent container for each course)
+        $blocks = $html -split '<div class="artikel_box_content_wrapper">'
 
-        Write-Verbose "[CourseMonitor] Found $($matches.Count) total courses"
+        Write-Verbose "[CourseMonitor] Found $($blocks.Count - 1) course blocks"
 
         $courses = @()
-        foreach ($match in $matches) {
-            $fullText = $match.Groups[1].Value.Trim()
 
-            # Parse: "Name DD.MM.YYYY HH:MM-HH:MM"
-            # Regex: (.*?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}-\d{2}:\d{2})
-            if ($fullText -match '^(.*?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}-\d{2}:\d{2})$') {
-                $courseName = $Matches[1].Trim()
-                $courseDate = $Matches[2]
-                $courseTime = $Matches[3]
+        for ($i = 1; $i -lt $blocks.Count; $i++) {
+            $block = $blocks[$i]
 
-                $courseId = "$courseName|$courseDate|$courseTime"
+            # Extract course name from link
+            if ($block -match 'class="content artikel_box_name"[^>]*>([^<]+)</a>') {
+                $fullText = $Matches[1].Trim()
 
-                $courses += @{
-                    id = $courseId
-                    name = $courseName
-                    date = $courseDate
-                    time = $courseTime
-                    fetched_at = ([datetime]::UtcNow).ToString("o")
+                # Extract price from preis span in same block
+                $price = ""
+                if ($block -match '<span class="artikel_preis\s*"[^>]*>\s*([^<]+)</span>') {
+                    $price = $Matches[1].Trim()
                 }
-                Write-Verbose "[CourseMonitor] Parsed: $courseName ($courseDate $courseTime)"
-            }
-            else {
-                Write-Verbose "[CourseMonitor] Failed to parse: $fullText"
+
+                # Parse: "Name DD.MM.YYYY HH:MM-HH:MM"
+                if ($fullText -match '^(.*?)\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}-\d{2}:\d{2})$') {
+                    $courseName = $Matches[1].Trim()
+                    $courseDate = $Matches[2]
+                    $courseTime = $Matches[3]
+
+                    $courseId = "$courseName|$courseDate|$courseTime"
+
+                    $courses += @{
+                        id = $courseId
+                        name = $courseName
+                        date = $courseDate
+                        time = $courseTime
+                        price = $price
+                        fetched_at = ([datetime]::UtcNow).ToString("o")
+                    }
+                    Write-Verbose "[CourseMonitor] Parsed: $courseName | $courseDate $courseTime | $price"
+                }
             }
         }
 
@@ -204,7 +212,9 @@ function Send-BasicCourseNotification {
     }
 
     # Format course list for notification
-    $courseList = ($Courses | ForEach-Object { "  - $($_.name) ($($_.date) $($_.time))" }) -join "`n"
+    $courseList = ($Courses | ForEach-Object {
+        "  - $($_.name)`n    $($_.date) $($_.time) | $($_.price)"
+    }) -join "`n"
 
     $message = @"
 $($Courses.Count) neue Kurs(e) auf Shooting-Store.ch verfügbar:
