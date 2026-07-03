@@ -6,11 +6,11 @@ Automated course monitoring and availability tracking for shooting-store.ch IPSC
 
 ## Status
 
-**Version:** v0.1.0  
-**Status:** [DEVELOPMENT] Modular Refactor – v0.1 completed, notifications coming v0.2  
+**Version:** v0.1.1  
+**Status:** [DEVELOPMENT] Core monitoring + notifications stable (v0.1), security hardening (v0.1.1)  
 **Last Updated:** 2026-07-03
 
-**What Works (v0.1):**
+**What Works (v0.1.1):**
 - ✅ Course monitoring from shooting-store.ch
 - ✅ Modular architecture (core, monitors, filters, notifiers)
 - ✅ HTML parsing and course extraction
@@ -21,14 +21,16 @@ Automated course monitoring and availability tracking for shooting-store.ch IPSC
 - ✅ Structured JSON logging with rotation
 - ✅ Filter system (type matching + exclusions)
 - ✅ Configuration validation (config.schema.json)
+- ✅ Email notifications (Microsoft Graph OAuth2)
+- ✅ Discord webhook notifications
+- ✅ Windows Toast notifications
+- ✅ Security hardening (token encryption, URL validation, error sanitization)
 
 **What's Planned (v0.2+):**
-- 📋 Email notifications (SMTP)
-- 📋 Discord webhook notifications
-- 📋 Windows Toast notifications (full WinRT)
 - 📋 Multi-website support via config
 - 📋 Windows Scheduled Task integration
 - 📋 GUI configuration (WPF)
+- 📋 HTML parser upgrade (HtmlAgilityPack)
 
 ---
 
@@ -50,6 +52,64 @@ Automated course monitoring and availability tracking for shooting-store.ch IPSC
 - **Windows:** Windows 10 / Windows Server 2016+
 - **Network:** Internet access to shooting-store.ch
 - **Disk:** ~1MB for logs + state files
+
+---
+
+## Security Features (v0.1.1)
+
+**Token Protection:**
+- OAuth2 tokens encrypted with DPAPI (LocalMachine scope) before disk storage
+- Tokens automatically refreshed on expiry
+- Failed decryption triggers fresh token request
+
+**Credential Handling:**
+- Credentials managed via environment variables (not in config files)
+- SecureString input for Client Secret (prevents PowerShell history exposure)
+- Error messages sanitized (credentials masked in logs)
+
+**Network Security:**
+- URL validation prevents injection attacks (only http/https allowed)
+- HTTPS certificate validation for critical endpoints (login.microsoftonline.com, graph.microsoft.com)
+- Signed requests with bearer token for OAuth2
+
+**Configuration Security:**
+- No secrets stored in config.json (only non-sensitive fields)
+- Token cache encrypted and excluded from version control
+- Structured logging with sensitive data masking
+
+---
+
+## Environment Variables (Required for Email/Discord)
+
+Set these before running with notifications enabled:
+
+```powershell
+# Azure AD OAuth2 (required for email notifications)
+$env:IPSC_AZURE_TENANT_ID = 'your-tenant-id'
+$env:IPSC_AZURE_CLIENT_ID = 'your-client-id'
+$env:IPSC_AZURE_USER_ID = 'your-user-id'
+
+# Discord Webhooks (optional, required only if Discord notifications enabled)
+$env:IPSC_DISCORD_WEBHOOKS = 'https://discord.com/api/webhooks/ID/TOKEN,...'
+
+# Credential Store (optional, custom location for encrypted credentials)
+$env:IPSC_CREDENTIAL_STORE_PATH = 'C:\Custom\Path\credentials'
+```
+
+**Setup Script:**
+```powershell
+# Interactive setup (recommended)
+.\scripts\Setup-AzureCredentials.ps1
+```
+
+**Persistent Setup (Windows):**
+```powershell
+# Set permanently in user environment
+setx IPSC_AZURE_TENANT_ID 'your-tenant-id'
+setx IPSC_AZURE_CLIENT_ID 'your-client-id'
+setx IPSC_AZURE_USER_ID 'your-user-id'
+setx IPSC_DISCORD_WEBHOOKS 'webhook-urls-here'
+```
 
 ---
 
@@ -269,6 +329,45 @@ Get-ExecutionPolicy
 # Set to RemoteSigned (safe for local scripts)
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
+
+---
+
+## Pre-Deployment Security Checklist
+
+Before running in production or with notifications enabled:
+
+**OAuth2 Credentials:**
+- [ ] Environment variables set: `IPSC_AZURE_TENANT_ID`, `IPSC_AZURE_CLIENT_ID`, `IPSC_AZURE_USER_ID`
+- [ ] Variables set via `setx` or permanent environment (not hardcoded in scripts)
+- [ ] No credentials in `config.json`
+- [ ] Run `.\scripts\Setup-AzureCredentials.ps1` for interactive setup
+
+**Discord Webhooks (if enabled):**
+- [ ] `IPSC_DISCORD_WEBHOOKS` environment variable configured
+- [ ] Webhook URL is valid and active
+- [ ] Not stored in `config.json`
+
+**Token Cache Security:**
+- [ ] `data/.token_cache.json` is encrypted (binary file, not readable JSON)
+- [ ] Token cache is excluded from backups of sensitive data
+- [ ] `.gitignore` prevents accidental commit
+
+**Logging & Logs:**
+- [ ] Log directory has restricted access permissions
+- [ ] No credentials appear in `data/logs/watcher-*.log`
+- [ ] Run this to verify: `Select-String 'secret|password|token|client_id|tenant' data/logs/* -ErrorAction SilentlyContinue`
+
+**Network:**
+- [ ] All OAuth2 requests use HTTPS (no plaintext)
+- [ ] Can reach `login.microsoftonline.com` and `graph.microsoft.com`
+- [ ] Corporate proxy configured (if applicable)
+
+**Testing:**
+- [ ] Test email notification: `.\BasicCourseWatcher.ps1 -RunOnce` (with email enabled)
+- [ ] Check logs for errors and credential masking
+- [ ] Verify token cache was created and encrypted
+
+**For detailed security configuration:** See [docs/SECURITY.md](docs/SECURITY.md)
 
 ---
 

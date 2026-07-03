@@ -913,6 +913,92 @@ Negative:
 
 ---
 
+## ADR-010: Security & Credential Management
+
+**Status:** [ACCEPTED] ✅
+
+**Context:**
+v0.1.0 implementierte Email (OAuth2) und Discord notifications, aber mit Sicherheitslücken:
+- OAuth2 tokens als plaintext JSON auf Disk (valid für 1 Stunde)
+- Discord webhooks in plaintext config.json (sind Bearer Tokens!)
+- Keine URL-Validierung (Injection-anfällig)
+- Client Secret könnte in PowerShell-History landen
+- Keine Error-Sanitization (credentials in Logs)
+
+**Decision:**
+
+### **Comprehensive Security Hardening (v0.1.1)**
+
+**Phase 1: Immediate Fixes**
+1. **URL Validation:** Neue `Test-ValidUrl` Funktion
+   - Nur http/https scheme erlaubt
+   - Absolute URLs (keine relativen)
+   - Validierung vor allen Web-Requests
+
+2. **Read-Host Protection:** Client Secret mit `-AsSecureString`
+   - Verhindert PowerShell History Exposure
+   - Konvertierung für OAuth2 Call, dann Encryptions
+
+**Phase 2: Credential Encryption**
+1. **Token Cache Encryption:** DPAPI mit LocalMachine Scope
+   - JWT tokens encrypted before disk storage
+   - LocalMachine scope erlaubt SYSTEM account (Scheduled Tasks)
+   - Graceful fallback bei Decrypt-Fehler (automatischer Token Refresh)
+
+2. **Environment Variables:** Secrets aus config.json
+   - `IPSC_AZURE_TENANT_ID`, `IPSC_AZURE_CLIENT_ID`, `IPSC_AZURE_USER_ID`
+   - `IPSC_DISCORD_WEBHOOKS` (replaces config.json storage)
+   - Env vars precedence über config fallback (backward compat)
+
+3. **HTTPS Certificate Validation:**
+   - Neue `Invoke-SecureWebRequest` Wrapper-Funktion
+   - Logging für critical endpoints (login.microsoftonline.com, graph.microsoft.com)
+   - Windows default CA validation (system CA store)
+
+**Phase 3: Error & Config Cleanup**
+1. **Error Message Sanitization:** Neue `Protect-OAuthError` Funktion
+   - Maske: client_secret, client_id, tenant_id, email addresses
+   - Logs bleiben informativ (status codes visible) aber credentials hidden
+
+2. **Config Cleanup:** Legacy SMTP fields aus config.example.json
+   - Provider: OAuth2 (Graph API) only, no SMTP support
+   - Documentation aktualisiert
+
+**Consequences:**
+
+Positive:
+- (+) **No plaintext tokens:** DPAPI encryption prevents disk access theft
+- (+) **Env var secrets:** Credentials not in version-controlled config
+- (+) **URL validation:** Injection attacks prevented
+- (+) **Error safety:** Logs safe even if shared/archived
+- (+) **HTTPS audit trail:** Critical endpoints logged for compliance
+- (+) **Backward compatible:** Old config.json workflows still supported
+- (+) **Machine-specific:** DPAPI prevents token portability (security+)
+
+Negative:
+- (-) **DPAPI per-machine:** Token cache not shareable across machines
+- (-) **Env var setup:** Users must run Setup-AzureCredentials.ps1 or setx manually
+- (-) **Entropy fixed:** DPAPI entropy bytes hardcoded (acceptable for user-level secrets)
+
+**Alternatives Considered:**
+- **Option A: User-Scope DPAPI** → Rejected: Scheduled Task (SYSTEM) can't decrypt
+- **Option B: Azure Key Vault** → Rejected: Adds cloud dependency, overkill for local tool
+- **Option C: No encryption** → Rejected: Unacceptable for credentials/tokens on disk
+
+**Implementation Timeline:**
+- Phase 1: 1-2 hours (URL validation, Read-Host fix)
+- Phase 2: 4-6 hours (Token encryption, Env vars, HTTPS validation)
+- Phase 3: 1-2 hours (Error sanitization, Config cleanup)
+- **Total:** ~8 hours (completed v0.1.1 release)
+
+**See Also:**
+- ADR-001: PowerShell + Windows justifies DPAPI LocalMachine scope
+- ADR-007: Logging & Observability (error masking implementation)
+- [STRUCTURE.md](STRUCTURE.md) – Security validation rules
+- [CLAUDE.md](CLAUDE.md) – Security rule 1.2 (validation at boundaries)
+
+---
+
 ## FINAL ADR Status Summary
 
 | # | Title | Status | Scope |
@@ -926,6 +1012,7 @@ Negative:
 | 007 | Logging & Observability | [ACCEPTED] ✅ | JSON + File + Event Log + Masking |
 | 008 | Testing Framework | [ACCEPTED] ✅ | Pester 5.0+, 90% coverage, integration tests |
 | 009 | GUI (Phase 2) | [ACCEPTED] ✅ | WPF Desktop, Monitors/Filters/Notifiers/Scheduler |
+| 010 | Security & Credentials | [ACCEPTED] ✅ | DPAPI encryption, Env vars, URL validation, Error masking |
 
 ### All Critical Architectural Decisions MADE ✅
 

@@ -6,8 +6,8 @@ Automation und Monitoring für IPSC-Kurse mit intelligenter Benachrichtigung und
 
 ## Projekt-Kontext
 
-**Version:** v0.1.0  
-**Status:** [DEVELOPMENT] Core monitoring stable: All courses tracked, NEW + AVAILABILITY_REDUCED detected  
+**Version:** v0.1.1  
+**Status:** [DEVELOPMENT] Core monitoring + notifications stable, security hardening (Phase 1-3 complete)  
 **Sprache/Stack:** PowerShell 5.1 (Windows)  
 **Ziel:** Sichere, performante, tokensparende Zusammenarbeit mit Claude
 
