@@ -345,6 +345,108 @@ Before deploying to production:
 
 ---
 
+## 6. Debug Output & Error Handling
+
+### What to Avoid
+
+During error handling, avoid outputting full exception objects to console:
+```powershell
+# ❌ BAD - Exposes full exception details
+Write-Host "[DEBUG] Full error: $($_)" -ForegroundColor Red
+
+# ✅ GOOD - Only sanitized error message
+Write-Log -Level ERROR -Message "Operation failed" `
+    -Context @{ error = $sanitizedError }
+```
+
+**Why:** Full exception dumps may expose stack traces with sensitive information, file paths, or internal details that could aid an attacker.
+
+### Current Status
+
+✅ **FIXED (v0.6.0):** Debug output removed from `Invoke-SecureWebRequest()` in `src/core/Helpers.ps1`
+- Line 329 no longer outputs full exception via Write-Host
+- All error information flows through `Write-Log` with proper sanitization
+
+---
+
+## 7. Rate Limiting & Abuse Prevention
+
+### Current Implementation
+
+**Not implemented** – IPSC Kurs Watcher is designed for low-frequency operations:
+- Single monitoring cycle every 30 minutes (configurable)
+- Max ~2-5 requests per cycle per monitor
+- Well below all service limits (Azure: 2000 req/min, Discord: 5 req/5sec)
+
+### When Rate Limiting Becomes Necessary
+
+Rate limiting should be added **only if:**
+1. Poll interval reduced to <5 minutes consistently
+2. Multiple monitors added (>10 concurrent monitors)
+3. Aggressive retry logic triggered repeatedly
+
+### Future Enhancement
+
+Reserve for Phase 2+ if scaling to high-frequency monitoring. Current design is safe.
+
+---
+
+## 8. Email Header Injection Prevention
+
+### What It Prevents
+
+Email header injection where user input could:
+- Modify recipient list (Bcc/Cc injection)
+- Add/modify subject
+- Inject malicious headers
+
+### Current Implementation
+
+✅ **No Vulnerability:** Email construction uses Microsoft Graph API structured JSON payload:
+```powershell
+$payload = @{
+    message = @{
+        subject      = $Subject          # User-provided, used as-is
+        body         = @{
+            contentType = "HTML"
+            content     = $HtmlBody      # All content HtmlEncoded
+        }
+        toRecipients = $recipientList   # Validated email addresses
+    }
+}
+```
+
+**Why It's Safe:**
+- No raw SMTP header manipulation
+- Graph API validates structure server-side
+- Recipients pre-validated with regex pattern
+- No string concatenation for headers
+
+### Email XSS Protection (Related)
+
+All email body content is `HtmlEncoded` before insertion:
+```powershell
+<div>$([System.Web.HttpUtility]::HtmlEncode($courseName))</div>
+```
+
+This prevents script injection in HTML email context.
+
+---
+
+## 9. Future Security Enhancements
+
+**For Phase 2+ consideration:**
+- [ ] Certificate pinning for Azure/Graph endpoints (currently: Windows CA validation sufficient)
+- [ ] Advanced rate limiting if poll interval drops <5 minutes
+- [ ] Encrypted credential backup to secondary location
+- [ ] DPIA (Data Protection Impact Assessment) if multi-user features added
+- [ ] Penetration testing & security audit by external firm
+- [ ] Hardware security module (HSM) integration (future, if enterprise requirement)
+
+**Status:** Current implementation is production-ready. Enhancements deferred until scaling requirements warrant them.
+
+---
+
 ## Incident Response
 
 ### If Token Leaks
