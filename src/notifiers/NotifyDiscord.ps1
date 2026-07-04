@@ -118,7 +118,7 @@ function _BuildDiscordEmbeds {
     <# .SYNOPSIS Build Discord embed messages grouped by alert reason #>
     param([hashtable]$GroupedAlerts)
 
-    $embeds = @()
+    [array]$embeds = @()
     $reasonOrder = @('NEW', 'AVAILABILITY_REDUCED', 'SOLD_OUT', 'OTHER')
 
     foreach ($reason in $reasonOrder) {
@@ -145,16 +145,25 @@ function _BuildDiscordEmbeds {
             default { "Course status updates" }
         }
 
-        # Build fields (one per course)
-        $fields = @()
-        foreach ($alert in $alerts) {
-            $courseField = @{
-                name = "$($alert.name) | $($alert.date)"
-                value = "$($alert.time) | $($alert.price) | **$($alert.availability) Slots**"
+        # Build fields (one per course with separators)
+        $courseLines = @()
+        for ($i = 0; $i -lt $alerts.Count; $i++) {
+            $alert = $alerts[$i]
+            $courseLines += "[$($alert.name) | $($alert.price)]($($alert.url))"
+            $courseLines += "$($alert.date) | $($alert.time) | **$($alert.availability) Slots**"
+
+            if ($i -lt $alerts.Count - 1) {
+                $courseLines += "---"
+            }
+        }
+
+        $fields = @(
+            @{
+                name = " "
+                value = $courseLines -join "`n"
                 inline = $false
             }
-            $fields += $courseField
-        }
+        )
 
         # Create embed
         $embed = @{
@@ -171,7 +180,7 @@ function _BuildDiscordEmbeds {
         $embeds += $embed
     }
 
-    return $embeds
+    return ,$embeds
 }
 
 function _PostToWebhook {
@@ -191,7 +200,7 @@ function _PostToWebhook {
         return @{ success = $false; error = "Invalid webhook URL or embeds" }
     }
 
-    $payload = @{ embeds = $Embeds }
+    $payload = @{ embeds = @($Embeds) }
     $jsonPayload = $payload | ConvertTo-Json -Depth 10 -Compress
 
     $attempt = 0
@@ -201,9 +210,9 @@ function _PostToWebhook {
             $params = @{
                 Uri = $WebhookUrl
                 Method = 'POST'
-                ContentType = 'application/json'
+                Headers = @{ 'Content-Type' = 'application/json' }
                 Body = $jsonPayload
-                TimeoutSec = $TimeoutSeconds
+                TimeoutSeconds = $TimeoutSeconds
             }
 
             Invoke-SecureWebRequest @params | Out-Null

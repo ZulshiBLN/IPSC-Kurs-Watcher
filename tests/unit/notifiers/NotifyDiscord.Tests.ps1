@@ -170,16 +170,30 @@ Describe "Discord Notifier" {
             $soldOutEmbed.color | Should -Be 15671588
         }
 
-        It "should include course details in embed fields" {
+        It "should include course details in embed fields with link format" {
             $grouped = _GroupAlertsByReason -Alerts @($testAlerts[0])
             $embeds = _BuildDiscordEmbeds -GroupedAlerts $grouped
 
             $embed = $embeds[0]
             $embed.fields | Should -HaveCount 1
-            $embed.fields[0].name | Should -Match "IPSC Basic 2.0"
+            $embed.fields[0].value | Should -Match "\[IPSC Basic 2\.0 \| CHF 280\]"
+            $embed.fields[0].value | Should -Match "https://www.shooting-store.ch/basic"
             $embed.fields[0].value | Should -Match "09:30-13:00"
-            $embed.fields[0].value | Should -Match "CHF 280"
+            $embed.fields[0].value | Should -Match "12\.08\.2026"
             $embed.fields[0].value | Should -Match "3 Slots"
+        }
+
+        It "should add separator lines between multiple courses" {
+            $twoAlerts = @($testAlerts[0], $testAlerts[0] | ForEach-Object { $_ + @{ id = "different" } })
+            $grouped = _GroupAlertsByReason -Alerts $twoAlerts
+            $embeds = _BuildDiscordEmbeds -GroupedAlerts $grouped
+
+            $embed = $embeds[0]
+            $embed.fields[0].value | Should -Match "---"
+            # Check that separator is between courses but not at the end
+            $value = $embed.fields[0].value
+            $lines = $value -split "`n"
+            $lines[-1] | Should -Not -Be "---"
         }
 
         It "should set footer and timestamp" {
