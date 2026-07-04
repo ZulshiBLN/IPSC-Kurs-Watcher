@@ -55,7 +55,8 @@
     "discord": {
       "enabled": false,
       "retry_attempts": 3,
-      "timeout_seconds": 30
+      "timeout_seconds": 30,
+      "webhook_urls": []
     }
   },
   "state": {
