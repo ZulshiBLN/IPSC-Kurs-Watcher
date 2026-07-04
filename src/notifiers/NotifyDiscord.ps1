@@ -145,25 +145,17 @@ function _BuildDiscordEmbeds {
             default { "Course status updates" }
         }
 
-        # Build fields (one per course with separators)
-        $courseLines = @()
-        for ($i = 0; $i -lt $alerts.Count; $i++) {
-            $alert = $alerts[$i]
-            $courseLines += "[$($alert.name) | $($alert.price)]($($alert.url))"
-            $courseLines += "$($alert.date) | $($alert.time) | **$($alert.availability) Slots**"
+        # Build fields (one per course)
+        $fields = @()
+        foreach ($alert in $alerts) {
+            $value = "[$($alert.name) | $($alert.price)]($($alert.url))`n$($alert.date) | $($alert.time) | **$($alert.availability) Slots**"
 
-            if ($i -lt $alerts.Count - 1) {
-                $courseLines += "---"
-            }
-        }
-
-        $fields = @(
-            @{
+            $fields += @{
                 name = " "
-                value = $courseLines -join "`n"
+                value = $value
                 inline = $false
             }
-        )
+        }
 
         # Create embed
         $embed = @{
