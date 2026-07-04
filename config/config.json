@@ -38,7 +38,7 @@
   },
   "notifiers": {
     "windows_toast": {
-      "enabled": false,
+      "enabled": true,
       "sound_enabled": true,
       "group_by_type": true,
       "max_courses_per_group": 5,
@@ -46,7 +46,7 @@
       "main_page_url": "https://www.shooting-store.ch/de/kategorie/kurse1"
     },
     "email": {
-      "enabled": false,
+      "enabled": true,
       "provider": "graph",
       "token_cache_path": "data/.token_cache.json",
       "timeout_seconds": 30,
