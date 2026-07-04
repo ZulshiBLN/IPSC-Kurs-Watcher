@@ -249,22 +249,11 @@ function _SendDiscordWebhooks {
     $successCount = 0
     $failureCount = 0
 
-    # Send to all webhooks (parallel via jobs)
-    $jobs = @()
+    # Send to all webhooks (serial to avoid job startup overhead for small batches)
+    $results = @()
     foreach ($url in $WebhookUrls) {
-        $job = Start-Job -ScriptBlock {
-            # Re-load module context in job
-            . (Join-Path $Using:PSScriptRoot '../core/Logging.ps1')
-
-            _PostToWebhook -WebhookUrl $Using:url -Embeds $Using:Embeds `
-                -TimeoutSeconds $Using:TimeoutSeconds -MaxRetries $Using:MaxRetries
-        }
-        $jobs += $job
-    }
-
-    # Wait for all jobs and collect results
-    foreach ($job in $jobs) {
-        $result = $job | Wait-Job | Receive-Job
+        $result = _PostToWebhook -WebhookUrl $url -Embeds $Embeds `
+            -TimeoutSeconds $TimeoutSeconds -MaxRetries $MaxRetries
         $results += $result
 
         if ($result.success) {
@@ -273,8 +262,6 @@ function _SendDiscordWebhooks {
         else {
             $failureCount++
         }
-
-        Remove-Job -Job $job
     }
 
     $stopwatch.Stop()
