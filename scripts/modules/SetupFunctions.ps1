@@ -287,7 +287,7 @@ function Invoke-SetScheduledTask {
 
         $action = New-ScheduledTaskAction `
             -Execute "powershell.exe" `
-            -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$schedulerScript`""
+            -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$schedulerScript`" -RunOnce"
 
         $settings = New-ScheduledTaskSettingsSet `
             -AllowStartIfOnBatteries `

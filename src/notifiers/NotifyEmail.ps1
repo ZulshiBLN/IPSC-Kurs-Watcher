@@ -529,7 +529,8 @@ function Send-EmailNotification {
             $Config.token_cache_path
         }
         else {
-            Join-Path (Get-Location) $Config.token_cache_path
+            $root = if ($script:ProjectRoot) { $script:ProjectRoot } else { (Get-Location).Path }
+            Join-Path $root $Config.token_cache_path
         }
 
         $token = Get-AzureOAuthToken -TenantId $tenantId -ClientId $clientId `

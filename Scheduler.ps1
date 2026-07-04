@@ -23,12 +23,26 @@ Polling interval in minutes (overrides config value)
 #>
 
 param(
-    [string]$ConfigPath = 'config/config.json',
+    [string]$ConfigPath,
     [switch]$RunOnce,
     [int]$CheckInterval = 0
 )
 
 $ErrorActionPreference = 'Continue'
+
+# ============================================================================
+# INITIALIZATION & PATH RESOLUTION
+# ============================================================================
+
+$ScriptRoot = Split-Path $MyInvocation.MyCommand.Path
+
+if (-not $ConfigPath) {
+    $ConfigPath = Join-Path $ScriptRoot 'config/config.json'
+}
+
+if (-not [System.IO.Path]::IsPathRooted($ConfigPath)) {
+    $ConfigPath = Join-Path $ScriptRoot $ConfigPath
+}
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -70,7 +84,7 @@ function Initialize-AppIdentity {
 # MODULE LOADING (strict order, no circular deps)
 # ============================================================================
 
-$ScriptRoot = Split-Path $MyInvocation.MyCommand.Path
+$script:ProjectRoot = $ScriptRoot
 
 Write-Information "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Loading modules..." -InformationAction Continue
 
@@ -81,8 +95,9 @@ try {
     . (Join-Path $ScriptRoot 'src/core/Config.ps1')
     . (Join-Path $ScriptRoot 'src/core/State.ps1')
 
-    # Initialize logging
-    Initialize-Logging -LogDir 'data/logs' -LogLevel 'INFO' -Format 'json' -RetentionDays 30
+    # Initialize logging with absolute path
+    $logDir = Join-Path $ScriptRoot 'data/logs'
+    Initialize-Logging -LogDir $logDir -LogLevel 'INFO' -Format 'json' -RetentionDays 30
 
     # Initialize app identity for Toast notifications
     Initialize-AppIdentity
@@ -123,11 +138,6 @@ $config = $null
 $state = $null
 
 try {
-    # Resolve config path
-    if (-not [System.IO.Path]::IsPathRooted($ConfigPath)) {
-        $ConfigPath = Join-Path $ScriptRoot $ConfigPath
-    }
-
     $config = Get-Config -ConfigPath $ConfigPath
     Write-Log -Level INFO -Message "Configuration loaded" `
         -Context @{ monitors = $config.monitors.Count }
