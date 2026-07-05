@@ -90,14 +90,48 @@ try {
     Write-Host "Proceeding with publish attempt..."
 }
 
-# Publish module to PSGallery
-Write-Host ""
-Write-Host "Publishing module to PowerShell Gallery..."
-Write-Host "Repository: $Repository"
-Write-Host ""
+# Create temporary staging directory for publishing
+$tempStaging = Join-Path $env:TEMP "PSGallery-$moduleName-$(Get-Random)"
+$moduleDir = Join-Path $tempStaging $moduleName
 
 try {
-    Publish-Module -Path $ModulePath `
+    Write-Host ""
+    Write-Host "Creating staging directory for publishing..."
+    New-Item -ItemType Directory -Path $moduleDir -Force | Out-Null
+
+    # Copy manifest
+    Copy-Item $manifestPath -Destination (Join-Path $moduleDir "$moduleName.psd1") -Force
+    Write-Host "✓ Copied manifest"
+
+    # Copy PSM1 module
+    $psmPath = Join-Path $ModulePath "$moduleName.psm1"
+    if (Test-Path $psmPath) {
+        Copy-Item $psmPath -Destination (Join-Path $moduleDir "$moduleName.psm1") -Force
+        Write-Host "✓ Copied PSM1 module"
+    }
+
+    # Copy source files
+    $srcPath = Join-Path $ModulePath "src"
+    if (Test-Path $srcPath) {
+        Copy-Item $srcPath -Destination (Join-Path $moduleDir "src") -Recurse -Force
+        Write-Host "✓ Copied source files"
+    }
+
+    # Copy documentation
+    $docsPath = Join-Path $ModulePath "docs"
+    if (Test-Path $docsPath) {
+        Copy-Item $docsPath -Destination (Join-Path $moduleDir "docs") -Recurse -Force
+        Write-Host "✓ Copied documentation"
+    }
+
+    # Publish module to PSGallery
+    Write-Host ""
+    Write-Host "Publishing module to PowerShell Gallery..."
+    Write-Host "Repository: $Repository"
+    Write-Host "Module path: $moduleDir"
+    Write-Host ""
+
+    Publish-Module -Path $moduleDir `
         -NuGetApiKey $NuGetApiKey `
         -Repository $Repository `
         -Force `
@@ -119,6 +153,11 @@ try {
     Write-Host "2. Verify module manifest is valid: Test-ModuleManifest -Path '$manifestPath'"
     Write-Host "3. Check PSGallery status: https://www.powershellgallery.com/"
     exit 1
+} finally {
+    # Cleanup staging directory
+    if (Test-Path $tempStaging) {
+        Remove-Item $tempStaging -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 exit 0
