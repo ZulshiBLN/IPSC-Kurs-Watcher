@@ -90,8 +90,9 @@ try {
     Write-Host "Proceeding with publish attempt..."
 }
 
-# Create temporary staging directory for publishing
-$tempStaging = Join-Path $env:TEMP "PSGallery-$moduleName-$(Get-Random)"
+# Create temporary staging directory for publishing (cross-platform)
+$tempDir = if ($env:TEMP) { $env:TEMP } else { [System.IO.Path]::GetTempPath() }
+$tempStaging = Join-Path $tempDir "PSGallery-$moduleName-$(Get-Random)"
 $moduleDir = Join-Path $tempStaging $moduleName
 
 try {
