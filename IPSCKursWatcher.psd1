@@ -10,9 +10,6 @@
     PowerShellVersion    = '5.1'
     CompatiblePSEditions = @('Desktop')
 
-    # Supported platforms
-    PlatformRequirement  = 'Windows'
-
     FunctionsToExport    = @(
         'Invoke-MonitoringCycle'
     )
