@@ -6,8 +6,8 @@ Automation und Monitoring für IPSC-Kurse mit intelligenter Benachrichtigung und
 
 ## Projekt-Kontext
 
-**Version:** v0.6.0  
-**Status:** [DEVELOPMENT] Fixed email architecture, null-array bug fixed, ready for testing  
+**Version:** v1.0.0  
+**Status:** [STABLE] All core features implemented and tested - monitoring, change detection, and multi-channel notifications  
 **Sprache/Stack:** PowerShell 5.1 (Windows)  
 **Ziel:** Sichere, performante, tokensparende Zusammenarbeit mit Claude
 

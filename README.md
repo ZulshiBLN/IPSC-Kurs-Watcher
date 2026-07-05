@@ -6,9 +6,9 @@ Automated course monitoring and availability tracking for shooting-store.ch IPSC
 
 ## Status
 
-**Version:** v0.6.0  
-**Status:** [DEVELOPMENT] Fixed email architecture (sender/recipients split), null-array bug fixed, core functionality stable  
-**Last Updated:** 2026-07-04
+**Version:** v1.0.0  
+**Status:** [STABLE] All core features implemented and tested - monitoring, change detection, and multi-channel notifications  
+**Last Updated:** 2026-07-05
 
 **What Works (v0.1.1):**
 - ✅ Course monitoring from shooting-store.ch
@@ -26,9 +26,9 @@ Automated course monitoring and availability tracking for shooting-store.ch IPSC
 - ✅ Windows Toast notifications
 - ✅ Security hardening (token encryption, URL validation, error sanitization)
 
-**What's Planned (v0.2+):**
-- 📋 Multi-website support via config
+**What's Planned (v1.1+):**
 - 📋 Windows Scheduled Task integration
+- 📋 Multi-website support via config
 - 📋 GUI configuration (WPF)
 - 📋 HTML parser upgrade (HtmlAgilityPack)
 
