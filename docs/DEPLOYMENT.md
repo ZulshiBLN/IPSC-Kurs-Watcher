@@ -219,14 +219,29 @@ All the setup, configuration, and validation above applies.
 
 ### 2. Install Scheduled Task
 
+**Important:** If using Git Worktrees (local development), point the task to the `main/` worktree only.
+
 ```powershell
 # Run as Administrator (required)
-.\scripts\Set-ScheduledTask.ps1
+# Path must point to main/ worktree (production-stable branch)
+$taskPath = "C:\Repos\IPSC Kurs Watcher\main\Scheduler.ps1"
+
+# Create task pointing to main/ worktree
+.\scripts\Set-ScheduledTask.ps1 -ScriptPath $taskPath
+
 # Creates task "IPSC-Kurs-Watcher"
 # Trigger: Every 30 minutes
 # Principal: SYSTEM
-# Action: PowerShell -NoProfile -Command "& '.\Scheduler.ps1' -RunOnce"
+# Action: PowerShell -NoProfile -Command "& 'C:\Repos\IPSC Kurs Watcher\main\Scheduler.ps1' -RunOnce"
 ```
+
+**Why the `main/` path?**
+- Main branch is production-stable (thoroughly tested)
+- Develop/Prerelease branches are not stable for production
+- Scheduled Task will always use the stable version
+- Development in other branches won't interfere with production monitoring
+
+**See also:** [LOCAL_WORKTREE_SETUP.md](LOCAL_WORKTREE_SETUP.md) for complete Git Worktree configuration.
 
 ### 3. Verify Task Installation
 
