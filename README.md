@@ -409,7 +409,7 @@ See [OPERATIONAL_GUIDE.md](docs/OPERATIONAL_GUIDE.md) for:
 
 ## Contributing
 
-This is a solo project maintained by Michel Brosche (google@brosche-bausinger.ch).
+This is a solo project maintained by ZulshiBLN (IPSCCourseWatcher@brosche-bausinger.ch).
 
 For questions, suggestions, or issues:
 1. Check [OPERATIONAL_GUIDE.md](docs/OPERATIONAL_GUIDE.md) – Troubleshooting section
