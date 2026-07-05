@@ -1249,3 +1249,209 @@ Negative:
 - Full documentation + troubleshooting guides
 - Production-ready deployment
 - Timeline: 4-6 weeks after v0.1.0
+
+---
+
+## ADR-005: Release Strategy (3-Branch + Dual-Registry Model)
+
+**Status:** [ACCEPTED] ✅
+
+**Context:**
+Need a structured release process that:
+- Supports beta testing before stable releases
+- Maintains code quality through staged testing
+- Leverages multiple distribution channels (PSGallery, GitHub Packages, GitHub Releases)
+- Aligns with semantic versioning
+- Provides clear workflow for contributors and maintainers
+
+**Decision:**
+Implement a **3-branch release strategy** with **2-registry distribution**:
+
+### Branch Workflow
+```
+develop (Main Dev Branch)
+    ↓ (feature complete)
+prerelease (Beta Testing)
+    ↓ (validated & stable)
+main (Production)
+```
+
+### Distribution Strategy
+```
+Pre-releases (v1.1.0-beta.1, v1.1.0-rc.1)
+    ├─ GitHub Release (ZIP archive + notes)
+    └─ GitHub Packages (for beta testers)
+    └─ NOT published to PowerShell Gallery
+
+Stable Releases (v1.1.0, v2.0.0)
+    ├─ GitHub Release (ZIP archive + notes)
+    ├─ GitHub Packages (for all users)
+    └─ PowerShell Gallery (official registry)
+```
+
+### Version Format (Semantic Versioning)
+```
+MAJOR.MINOR.PATCH[-PRERELEASE]
+
+Examples:
+  v1.0.0           → Stable release
+  v1.1.0-beta.1    → First beta
+  v1.1.0-rc.1      → Release candidate
+  v1.1.0           → Final release after RCs
+```
+
+**Consequences:**
+
+*Positive:*
+- (+) Clear separation: development, testing, production
+- (+) Beta testers can opt-in via GitHub Packages
+- (+) PSGallery stays stable (no beta clutter)
+- (+) Easy rollback via GitHub Releases archive
+- (+) Proper workflow for collaborative development
+- (+) Automatic GitHub Actions workflow (no manual steps)
+- (+) Users get stable releases by default
+
+*Negative:*
+- (-) More branches to maintain (3 instead of 1-2)
+- (-) Requires discipline to follow workflow
+- (-) Merge conflicts possible between branches
+- (-) GitHub Packages adds operational overhead
+
+**Detailed Workflow:**
+
+### 1. Development Phase (develop branch)
+```
+# Feature work on develop
+git checkout develop
+# ... make changes, test ...
+git commit -m "Feat: Add new feature"
+git push origin develop
+
+# Workflow validation via pre-commit hooks
+# Tests run automatically via build.ps1
+```
+
+### 2. Beta Testing Phase (prerelease branch)
+```
+# When feature complete, merge to prerelease
+git checkout prerelease
+git merge develop
+git push origin prerelease
+
+# Tag as pre-release
+git tag v1.1.0-beta.1
+git push origin v1.1.0-beta.1
+
+# GitHub Actions triggers:
+# - Create GitHub Release (marked as pre-release)
+# - Publish ZIP archive
+# - Publish to GitHub Packages ONLY
+# - Generate release notes from commits
+```
+
+**Beta-Tester Installation:**
+```powershell
+# Step 1: Register GitHub Packages (one-time)
+Register-PSRepository -Name "GitHub" `
+  -SourceLocation "https://nuget.pkg.github.com/ZulshiBLN/index.json" `
+  -InstallationPolicy Trusted `
+  -Credential (Get-Credential)  # GitHub token
+
+# Step 2: Install beta version
+Install-Module -Name IPSCKursWatcher `
+  -Repository GitHub `
+  -RequiredVersion 1.1.0-beta.1
+```
+
+### 3. Release Validation (prerelease → main)
+```
+# After beta testing phase (typically 1-2 weeks)
+# Final validation checklist:
+- [ ] All beta issues resolved
+- [ ] Documentation updated
+- [ ] v1.1.0-beta.N working stable
+- [ ] No blocking issues reported
+
+# Merge prerelease to main
+git checkout main
+git merge prerelease
+git push origin main
+
+# Tag final release
+git tag v1.1.0
+git push origin v1.1.0
+
+# GitHub Actions triggers:
+# - Create GitHub Release (marked as stable)
+# - Publish ZIP archive
+# - Publish to GitHub Packages
+# - Publish to PowerShell Gallery
+```
+
+**Stable Release Installation:**
+```powershell
+# Users simply use standard command (pre-configured)
+Install-Module -Name IPSCKursWatcher -RequiredVersion 1.1.0
+# Automatically finds from PowerShell Gallery
+
+# Or explicitly
+Install-Module -Name IPSCKursWatcher `
+  -Repository PSGallery `
+  -RequiredVersion 1.1.0
+```
+
+### 4. Hotfixes (Production Issues)
+```
+# If critical bug found in v1.0.0 (main)
+git checkout main
+git pull origin main
+
+# Create hotfix
+# ... fix code ...
+git commit -m "Fix: Critical bug in production"
+
+# Update version to v1.0.1
+# (in IPSCKursWatcher.psd1, CLAUDE.md, README.md)
+
+# Tag and release
+git tag v1.0.1
+git push origin v1.0.1
+git push origin main
+
+# Merge back to develop (for future releases)
+git checkout develop
+git merge main
+git push origin develop
+```
+
+### Timeline Per Release Cycle
+
+```
+Day 1-14: Feature Development (develop)
+Day 15-21: Beta Testing (prerelease)
+Day 22: Final Release (main)
+Day 22+: Hotfixes as needed (main) + merge back to develop
+```
+
+**Alternatives:**
+
+1. **Single-branch model:** Only main branch
+   - Simpler, but no testing phase
+   - Higher risk of broken stable releases
+   - Rejected: Not suitable for collaborative projects
+
+2. **GitFlow (5+ branches):** develop, feature/*, release/*, hotfix/*, main
+   - More complex than needed
+   - Overhead for solo/small team
+   - Rejected: Over-engineered for current scale
+
+3. **Trunk-based development:** All on main
+   - Fast, but no quality gates
+   - Harder to maintain parallel versions
+   - Rejected: Beta testing not possible
+
+**See Also:**
+- [RELEASE_AUTOMATION.md](docs/RELEASE_AUTOMATION.md) — GitHub Actions workflow details
+- [DEPLOYMENT.md](docs/DEPLOYMENT.md) — Installation instructions for both paths
+- [STRUCTURE.md](STRUCTURE.md) — Version file update requirements
+- ADR-001: Technology Stack (PowerShell 5.1, Windows-only)

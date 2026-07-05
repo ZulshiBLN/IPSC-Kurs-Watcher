@@ -159,7 +159,21 @@ Install-Module -Name IPSCKursWatcher -RequiredVersion 1.0.0
 
 ---
 
-## PowerShell Gallery Publication Flow
+## Multi-Registry Publication Strategy
+
+### Overview
+
+```
+Pre-Release (v1.1.0-beta.1)
+    ├─ GitHub Release ✅
+    ├─ GitHub Packages ✅
+    └─ PowerShell Gallery ❌ (NOT published)
+
+Stable Release (v1.1.0)
+    ├─ GitHub Release ✅
+    ├─ GitHub Packages ✅
+    └─ PowerShell Gallery ✅
+```
 
 ### Step 1: GitHub Actions Triggers Release
 
