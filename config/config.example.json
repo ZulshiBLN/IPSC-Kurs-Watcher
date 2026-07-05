@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "_comment": "IPSC Kurs Watcher Configuration Example - Copy to config.json and customize",
+
+  "monitors": [
+    {
+      "id": "shooting-store",
+      "provider": "shooting-store",
+      "enabled": true,
+      "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
+      "base_url": "https://www.shooting-store.ch",
+      "timeout_seconds": 30,
+      "retry_attempts": 3,
+      "poll_interval_minutes": 30
+    }
+  ],
+
+  "filters": {
+    "course_types": [
+      {
+        "id": "tryout",
+        "name": "Tryout",
+        "patterns": ["Tryout", "Einsteiger-Kurs"],
+        "enabled": true
+      },
+      {
+        "id": "basic",
+        "name": "Basic Level",
+        "patterns": ["Basic", "Anfänger", "Level 1"],
+        "enabled": true
+      },
+      {
+        "id": "basic2",
+        "name": "Basic 2.0",
+        "patterns": ["Basic 2.0", "Basic 2.x", "Level 2"],
+        "enabled": true
+      },
+      {
+        "id": "advanced",
+        "name": "Advanced",
+        "patterns": ["Advanced", "Fortgeschritten", "Level 3"],
+        "enabled": true
+      }
+    ],
+    "exclude_patterns": ["Privatunterricht", "VIP-Kurs", "Geschlossen"],
+    "min_availability": 1
+  },
+
+  "notifiers": {
+    "windows_toast": {
+      "enabled": true,
+      "sound_enabled": true,
+      "group_by_type": true,
+      "max_courses_per_group": 5,
+      "auto_dismiss_seconds": 5,
+      "main_page_url": "https://www.shooting-store.ch/de/kategorie/kurse1"
+    },
+
+    "email": {
+      "enabled": false,
+      "_comment_enabled": "Set to true to enable email notifications",
+      "_comment_provider": "Email notifications via Microsoft Graph API (OAuth2)",
+      "_comment_credentials": "All credentials and recipient configured via environment variables",
+      "_comment_variables": "IPSC_AZURE_TENANT_ID, IPSC_AZURE_CLIENT_ID, IPSC_AZURE_USER_ID (recipient email)",
+      "_comment_setup": "Run scripts/Setup-AzureCredentials.ps1 to configure interactively",
+      "provider": "graph",
+      "retry_attempts": 3,
+      "timeout_seconds": 30,
+      "token_cache_path": "data/.token_cache.json"
+    },
+
+    "discord": {
+      "enabled": false,
+      "_comment_enabled": "Set to true to enable Discord notifications",
+      "_comment_webhooks": "Discord webhook URLs configured via IPSC_DISCORD_WEBHOOKS environment variable",
+      "_comment_setup": "setx IPSC_DISCORD_WEBHOOKS \"https://discord.com/api/webhooks/ID/TOKEN,https://discord.com/api/webhooks/ID2/TOKEN2\"",
+      "retry_attempts": 3,
+      "timeout_seconds": 30
+    }
+  },
+
+  "state": {
+    "file_path": "data/state.json",
+    "retention_days": 30
+  },
+
+  "logging": {
+    "log_dir": "data/logs",
+    "log_level": "INFO",
+    "retention_days": 30,
+    "format": "json"
+  },
+
+  "error_handling": {
+    "alert_on_repeated_errors": false,
+    "error_threshold": 5,
+    "error_window_minutes": 60
+  }
+}

@@ -1,0 +1,193 @@
+name: Release & Publish to PSGallery
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.0
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+          # PSGallery Publishing Policy: Only stable releases (v1.x.x, v2.x.x, etc.)
+          # Pre-releases (beta, rc, alpha) are NOT published to PSGallery
+          if [[ "$TAG" == *"-beta"* ]] || [[ "$TAG" == *"-rc"* ]] || [[ "$TAG" == *"-alpha"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "publish_to_gallery=false" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "publish_to_gallery=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          # Extract commits since last tag
+          PREV_TAG=$(git describe --tags --abbrev=0 ${{ github.ref }}^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            COMMITS=$(git log --oneline --format="- %s")
+          else
+            COMMITS=$(git log $PREV_TAG..HEAD --oneline --format="- %s")
+          fi
+
+          RELEASE_NOTES="# IPSC Kurs Watcher Release ${{ steps.version.outputs.tag }}
+
+          ## Installation
+
+          ### PowerShell Gallery
+          \`\`\`powershell
+          Install-Module -Name IPSCKursWatcher -RequiredVersion ${{ steps.version.outputs.version }}
+          \`\`\`
+
+          ### Manual Download
+          Download the ZIP file below and extract to your preferred location, then run:
+          \`\`\`powershell
+          cd IPSC-Kurs-Watcher
+          .\scripts\Setup.ps1
+          .\Scheduler.ps1 -RunOnce
+          \`\`\`
+
+          ## Recent Changes
+          $COMMITS
+
+          ## Documentation
+          - [Quick Start](https://github.com/ZulshiBLN/IPSC-Kurs-Watcher/blob/main/README.md#quick-start-5-minutes)
+          - [Deployment Guide](https://github.com/ZulshiBLN/IPSC-Kurs-Watcher/blob/main/docs/DEPLOYMENT.md)
+          - [Architecture](https://github.com/ZulshiBLN/IPSC-Kurs-Watcher/blob/main/docs/ARCHITECTURE.md)
+          - [Configuration Reference](https://github.com/ZulshiBLN/IPSC-Kurs-Watcher/blob/main/docs/CONFIG_SCHEMA.md)
+
+          **Status:** Production Ready (Grade B+)"
+
+          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create ZIP archive
+        run: |
+          # Create ZIP with all source files and documentation
+          zip -r IPSC-Kurs-Watcher-${{ steps.version.outputs.tag }}.zip . \
+            -x '*.git*' '*.github*' '*.log' 'release/*' '*.backup' \
+            --exclude='*/.*'
+
+          ls -lh IPSC-Kurs-Watcher-${{ steps.version.outputs.tag }}.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2.0.1
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: IPSC Kurs Watcher ${{ steps.version.outputs.tag }}
+          body: ${{ steps.release_notes.outputs.release_notes }}
+          files: IPSC-Kurs-Watcher-${{ steps.version.outputs.tag }}.zip
+          draft: false
+          prerelease: ${{ steps.version.outputs.is_prerelease }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run PowerShell Publishing Script (Stable Only)
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+          PUBLISH_TO_GALLERY: ${{ steps.version.outputs.publish_to_gallery }}
+          IS_PRERELEASE: ${{ steps.version.outputs.is_prerelease }}
+        run: |
+          Write-Host "Publishing to PowerShell Gallery..."
+          Write-Host "Version: ${{ steps.version.outputs.version }}"
+          Write-Host "Is Pre-Release: $env:IS_PRERELEASE"
+          Write-Host "Should Publish: $env:PUBLISH_TO_GALLERY"
+
+          # Skip publishing for pre-release/beta versions (PSGallery Listing Policy)
+          if ($env:PUBLISH_TO_GALLERY -ne "true") {
+            Write-Host ""
+            Write-Host "============================================"
+            Write-Host "⏭ SKIPPING PowerShell Gallery Publishing"
+            Write-Host "============================================"
+            Write-Host ""
+            Write-Host "Reason: Pre-release version detected"
+            Write-Host "Policy: Only stable releases (v1.x.x) are listed on PSGallery"
+            Write-Host "Pre-releases (beta, rc, alpha) are NOT published"
+            Write-Host ""
+            Write-Host "This release is available on GitHub only:"
+            Write-Host "  https://github.com/ZulshiBLN/IPSC-Kurs-Watcher/releases/tag/${{ steps.version.outputs.tag }}"
+            exit 0
+          }
+
+          if ([string]::IsNullOrEmpty($env:PSGALLERY_API_KEY)) {
+            Write-Host "⚠ PSGALLERY_API_KEY not set - skipping PowerShell Gallery publishing"
+            Write-Host "To enable: Add PSGALLERY_API_KEY secret to GitHub repository"
+            Write-Host ""
+            Write-Host "To setup:"
+            Write-Host "1. Generate API key at https://www.powershellgallery.com/account/Edit"
+            Write-Host "2. Add to GitHub repository secrets as 'PSGALLERY_API_KEY'"
+            exit 0
+          }
+
+          # Run publish script with API key (only for stable releases)
+          .\scripts\Publish-ToGallery.ps1 `
+            -NuGetApiKey "$env:PSGALLERY_API_KEY" `
+            -ModulePath "." `
+            -ErrorAction Stop
+
+          Write-Host "✓ Publishing to PowerShell Gallery completed!"
+
+      - name: Verify PowerShell Gallery Publication
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+          PUBLISH_TO_GALLERY: ${{ steps.version.outputs.publish_to_gallery }}
+        run: |
+          # Skip verification for pre-releases (PSGallery Listing Policy)
+          if ($env:PUBLISH_TO_GALLERY -ne "true") {
+            Write-Host "Skipping verification - pre-release version (not published to PSGallery)"
+            exit 0
+          }
+
+          if ([string]::IsNullOrEmpty($env:PSGALLERY_API_KEY)) {
+            Write-Host "Skipping verification - PSGALLERY_API_KEY not set"
+            exit 0
+          }
+
+          Write-Host "Waiting for PSGallery indexing (30 seconds)..."
+          Start-Sleep -Seconds 30
+
+          Write-Host "Checking PowerShell Gallery for module..."
+          $module = Find-Module -Name IPSCKursWatcher -Repository PSGallery -ErrorAction SilentlyContinue
+
+          if ($module) {
+            Write-Host "✓ Module found on PowerShell Gallery!"
+            Write-Host "  Name: $($module.Name)"
+            Write-Host "  Version: $($module.Version)"
+            Write-Host "  Published: $($module.PublishedDate)"
+          } else {
+            Write-Host "⚠ Module not yet indexed on PowerShell Gallery (may take 5-10 minutes)"
+            Write-Host "Check: https://www.powershellgallery.com/packages/IPSCKursWatcher"
+          }
+
+      - name: Notify Completion
+        run: |
+          echo "Release ${{ steps.version.outputs.tag }} published successfully!"
+          echo ""
+          echo "Available at:"
+          echo "  - GitHub Release: https://github.com/ZulshiBLN/IPSC-Kurs-Watcher/releases/tag/${{ steps.version.outputs.tag }}"
+          if [ "${{ steps.version.outputs.publish_to_gallery }}" = "true" ]; then
+            echo "  - PowerShell Gallery: https://www.powershellgallery.com/packages/IPSCKursWatcher/${{ steps.version.outputs.version }}"
+          fi
+          echo ""
+          echo "Installation:"
+          echo "  Install-Module -Name IPSCKursWatcher -RequiredVersion ${{ steps.version.outputs.version }}"

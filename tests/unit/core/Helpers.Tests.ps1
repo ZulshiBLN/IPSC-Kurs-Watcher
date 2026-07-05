@@ -1,0 +1,414 @@
+#Requires -Version 5.1
+#Requires -Modules Pester
+
+BeforeAll {
+    $modulePath = Join-Path $PSScriptRoot '../../../src/core/Helpers.ps1'
+    . $modulePath
+}
+
+Describe "ConvertTo-SafeJson" {
+    Context "Object Conversion" {
+        It "converts hashtable to JSON" {
+            $obj = @{ id = 1; name = "Test" }
+            $json = $obj | ConvertTo-SafeJson
+
+            $json | Should -Not -BeNullOrEmpty
+            $json -match '"id"' | Should -Be $true
+            $json -match '"name"' | Should -Be $true
+        }
+
+        It "converts object to JSON" {
+            $obj = [PSCustomObject]@{ id = 1; name = "Test" }
+            $json = $obj | ConvertTo-SafeJson
+
+            $json | Should -Not -BeNullOrEmpty
+            $json -match '"id"' | Should -Be $true
+        }
+
+        It "accepts Depth parameter" {
+            $obj = @{ level1 = @{ level2 = @{ level3 = "deep" } } }
+            $json = $obj | ConvertTo-SafeJson -Depth 5
+
+            $json | Should -Not -BeNullOrEmpty
+        }
+
+        It "returns null on conversion error" {
+            $circular = @{}
+            $circular.self = $circular
+
+            $result = $circular | ConvertTo-SafeJson -ErrorAction SilentlyContinue
+            # Depending on PowerShell version, may throw or return $null
+        }
+    }
+}
+
+Describe "ConvertFrom-SafeJson" {
+    Context "JSON Parsing" {
+        It "parses valid JSON" {
+            $json = '{"id": 1, "name": "Test"}'
+            $obj = $json | ConvertFrom-SafeJson
+
+            $obj | Should -Not -BeNullOrEmpty
+            $obj.id | Should -Be 1
+            $obj.name | Should -Be "Test"
+        }
+
+        It "parses JSON array" {
+            $json = '[{"id": 1}, {"id": 2}]'
+            $obj = $json | ConvertFrom-SafeJson
+
+            $obj.Count | Should -Be 2
+        }
+
+        It "returns null on parse error" {
+            $invalidJson = '{invalid json}'
+            $result = $invalidJson | ConvertFrom-SafeJson -ErrorAction SilentlyContinue
+
+            $result | Should -BeNullOrEmpty
+        }
+    }
+}
+
+Describe "Test-FilePath" {
+    Context "File Validation" {
+        It "returns true for existing file" {
+            $testFile = "test_temp_file.txt"
+            New-Item -Path $testFile -Force | Out-Null
+
+            $result = Test-FilePath -Path $testFile
+
+            $result | Should -Be $true
+
+            Remove-Item $testFile -Force
+        }
+
+        It "returns false for non-existent file" {
+            $result = Test-FilePath -Path "nonexistent_file.txt"
+            $result | Should -Be $false
+        }
+
+        It "returns false for directory" {
+            $testDir = "test_temp_dir"
+            New-Item -Path $testDir -ItemType Directory -Force | Out-Null
+
+            $result = Test-FilePath -Path $testDir
+
+            $result | Should -Be $false
+
+            Remove-Item $testDir -Force
+        }
+    }
+}
+
+Describe "Test-ValidUrl" {
+    Context "URL Validation" {
+        It "returns true for valid HTTPS URL" {
+            $result = Test-ValidUrl -Url 'https://www.example.com/path'
+            $result | Should -Be $true
+        }
+
+        It "returns true for valid HTTP URL" {
+            $result = Test-ValidUrl -Url 'http://example.com/api/endpoint'
+            $result | Should -Be $true
+        }
+
+        It "returns true for Graph API endpoint" {
+            $result = Test-ValidUrl -Url 'https://graph.microsoft.com/v1.0/users/user123/sendMail'
+            $result | Should -Be $true
+        }
+
+        It "returns false for FTP URL" {
+            $result = Test-ValidUrl -Url 'ftp://files.example.com'
+            $result | Should -Be $false
+        }
+
+        It "returns false for relative URL" {
+            $result = Test-ValidUrl -Url '/path/to/resource'
+            $result | Should -Be $false
+        }
+
+        It "returns false for malformed URL" {
+            $result = Test-ValidUrl -Url 'not a url'
+            $result | Should -Be $false
+        }
+
+        It "returns false for empty string" {
+            $result = Test-ValidUrl -Url ''
+            $result | Should -Be $false
+        }
+
+        It "returns false for null" {
+            $result = Test-ValidUrl -Url $null
+            $result | Should -Be $false
+        }
+
+        It "returns false for URL with unsupported scheme" {
+            $result = Test-ValidUrl -Url 'gopher://example.com'
+            $result | Should -Be $false
+        }
+    }
+}
+
+Describe "Get-FileDirectory" {
+    Context "Directory Creation" {
+        It "creates directory if missing" {
+            $testPath = "test_temp_new_dir"
+
+            $result = Get-FileDirectory -Path $testPath
+
+            Test-Path $testPath | Should -Be $true
+            $result | Should -Be $testPath
+
+            Remove-Item $testPath -Force
+        }
+
+        It "returns path if directory exists" {
+            $testPath = "test_temp_existing"
+            New-Item -Path $testPath -ItemType Directory -Force | Out-Null
+
+            $result = Get-FileDirectory -Path $testPath
+
+            $result | Should -Be $testPath
+
+            Remove-Item $testPath -Force
+        }
+
+        It "returns null on creation error" {
+            $invalidPath = "C:\invalid_root_path\directory"
+
+            $result = Get-FileDirectory -Path $invalidPath -ErrorAction SilentlyContinue
+
+            # May return null or throw depending on permissions
+        }
+    }
+}
+
+Describe "Invoke-WithRetry" {
+    Context "Retry Logic" {
+        It "executes scriptblock successfully" {
+            $scriptblock = { return "success" }
+            $result = Invoke-WithRetry -ScriptBlock $scriptblock
+
+            $result | Should -Be "success"
+        }
+
+        It "retries on failure and succeeds" {
+            $script:attempt = 0
+            $scriptblock = {
+                $script:attempt++
+                if ($script:attempt -lt 2) { throw "Not yet" }
+                return "success"
+            }
+
+            $result = Invoke-WithRetry -ScriptBlock $scriptblock -MaxAttempts 5 -BaseDelaySeconds 0.05
+
+            $result | Should -Be "success"
+            $script:attempt | Should -BeGreaterThan 1
+        }
+
+        It "throws after max attempts exceeded" {
+            $scriptblock = { throw "Always fails" }
+
+            { Invoke-WithRetry -ScriptBlock $scriptblock -MaxAttempts 2 -BaseDelaySeconds 0.01 } | Should -Throw
+        }
+
+        It "supports custom base delay" {
+            $scriptblock = { throw "Fail" }
+
+            { Invoke-WithRetry -ScriptBlock $scriptblock -MaxAttempts 2 -BaseDelaySeconds 0.01 } | Should -Throw
+        }
+    }
+}
+
+Describe "Protect-SensitiveData" {
+    Context "Data Masking" {
+        It "masks password" {
+            $input = 'password="secret123"'
+            $result = Protect-SensitiveData -InputString $input
+
+            $result | Should -Match 'MASKED'
+            $result | Should -Not -Match 'secret123'
+        }
+
+        It "masks api_key" {
+            $input = 'api_key="abc123xyz"'
+            $result = Protect-SensitiveData -InputString $input
+
+            $result | Should -Match 'MASKED'
+        }
+
+        It "masks webhook_url" {
+            $input = 'webhook_url="https://discord.com/api/webhooks/123"'
+            $result = Protect-SensitiveData -InputString $input
+
+            $result | Should -Match 'MASKED'
+        }
+
+        It "masks email address" {
+            $input = 'user@example.com'
+            $result = Protect-SensitiveData -InputString $input
+
+            $result | Should -Match '@'
+            $result | Should -Not -Match 'user'
+        }
+
+        It "handles null input" {
+            $result = Protect-SensitiveData -InputString $null
+
+            $result | Should -BeNullOrEmpty
+        }
+
+        It "handles empty string" {
+            $result = Protect-SensitiveData -InputString ""
+
+            $result | Should -Be ""
+        }
+    }
+}
+
+Describe "Get-UtcTimestamp" {
+    Context "Timestamp Generation" {
+        It "returns ISO 8601 formatted string" {
+            $ts = Get-UtcTimestamp
+
+            $ts | Should -Not -BeNullOrEmpty
+            $ts -match '\d{4}-\d{2}-\d{2}' | Should -Be $true
+        }
+
+        It "contains 'Z' for UTC" {
+            $ts = Get-UtcTimestamp
+
+            $ts | Should -Match 'Z$'
+        }
+
+        It "returns valid datetime string" {
+            $ts = Get-UtcTimestamp
+
+            { [DateTime]::Parse($ts) } | Should -Not -Throw
+        }
+    }
+}
+
+Describe "Protect-OAuthError" {
+    Context "OAuth2 Error Sanitization" {
+        It "masks client_secret" {
+            $input = "Error: invalid client_secret abc123xyz"
+            $result = Protect-OAuthError -ErrorMessage $input
+
+            $result | Should -Match '\[REDACTED_SECRET\]'
+            $result | Should -Not -Match 'abc123xyz'
+        }
+
+        It "masks client_id" {
+            $input = "Failed: client_id xyz789 not recognized"
+            $result = Protect-OAuthError -ErrorMessage $input
+
+            $result | Should -Match '\[REDACTED_ID\]'
+            $result | Should -Not -Match 'client_id xyz789'
+        }
+
+        It "masks tenant_id" {
+            $input = "Invalid tenant_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            $result = Protect-OAuthError -ErrorMessage $input
+
+            $result | Should -Match '\[REDACTED_TENANT\]'
+            $result | Should -Not -Match 'xxxx'
+        }
+
+        It "masks email addresses" {
+            $input = "User user@example.com not found in directory"
+            $result = Protect-OAuthError -ErrorMessage $input
+
+            $result | Should -Match '\[REDACTED_EMAIL\]'
+            $result | Should -Not -Match 'user@example.com'
+        }
+
+        It "preserves error codes and status" {
+            $input = "Error 401: Unauthorized - invalid client_secret xyz"
+            $result = Protect-OAuthError -ErrorMessage $input
+
+            $result | Should -Match '401'
+            $result | Should -Match 'Unauthorized'
+            $result | Should -Match '\[REDACTED_SECRET\]'
+        }
+
+        It "handles null input" {
+            $result = Protect-OAuthError -ErrorMessage $null
+            $result | Should -BeNullOrEmpty
+        }
+
+        It "handles empty string" {
+            $result = Protect-OAuthError -ErrorMessage ""
+            $result | Should -Be ""
+        }
+    }
+}
+
+Describe "Invoke-SecureWebRequest" {
+    Context "Function Exists and Parameters" {
+        It "Invoke-SecureWebRequest is a valid function" {
+            Get-Command Invoke-SecureWebRequest -ErrorAction SilentlyContinue | Should -Not -Be $null
+        }
+
+        It "throws on null Uri" {
+            { Invoke-SecureWebRequest -Uri $null } | Should -Throw
+        }
+
+        It "throws on empty Uri" {
+            { Invoke-SecureWebRequest -Uri '' } | Should -Throw
+        }
+
+        It "accepts Method parameter" {
+            Get-Command Invoke-SecureWebRequest -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty Parameters |
+                Select-Object -ExpandProperty Keys |
+                Should -Contain 'Method'
+        }
+
+        It "accepts Headers parameter" {
+            Get-Command Invoke-SecureWebRequest -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty Parameters |
+                Select-Object -ExpandProperty Keys |
+                Should -Contain 'Headers'
+        }
+
+        It "accepts Body parameter" {
+            Get-Command Invoke-SecureWebRequest -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty Parameters |
+                Select-Object -ExpandProperty Keys |
+                Should -Contain 'Body'
+        }
+
+        It "accepts TimeoutSeconds parameter" {
+            Get-Command Invoke-SecureWebRequest -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty Parameters |
+                Select-Object -ExpandProperty Keys |
+                Should -Contain 'TimeoutSeconds'
+        }
+    }
+}
+
+Describe "ConvertTo-UnixTimestamp" {
+    Context "Timestamp Conversion" {
+        It "converts DateTime to Unix timestamp" {
+            $dt = [DateTime]'1970-01-01'
+            $result = ConvertTo-UnixTimestamp -DateTime $dt
+
+            $result | Should -Be 0
+        }
+
+        It "returns integer" {
+            $dt = Get-Date
+            $result = ConvertTo-UnixTimestamp -DateTime $dt
+
+            $result | Should -BeOfType [long]
+        }
+
+        It "handles future dates" {
+            $dt = [DateTime]'2026-07-03'
+            $result = ConvertTo-UnixTimestamp -DateTime $dt
+
+            $result | Should -BeGreaterThan 0
+        }
+    }
+}

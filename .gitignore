@@ -1,0 +1,159 @@
+# ============================================================================
+# ENVIRONMENT & CONFIGURATION
+# ============================================================================
+# Never commit environment files or local overrides
+.env
+.env.local
+.env.*.local
+*.local
+.DS_Store
+Thumbs.db
+
+# ============================================================================
+# IDE & EDITOR
+# ============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+*.vs/
+.vs/
+*.code-workspace
+*.netrw*
+
+# ============================================================================
+# RUNTIME STATE & LOGS
+# ============================================================================
+# Logs (application output)
+data/logs/
+data/*.log
+*.log
+logs/
+*.log.*
+
+# Application state (user-specific, auto-regenerated)
+data/state.json
+data/state.json.backup*
+data/.state*
+
+# Cache files
+data/*.cache
+data/.cache/
+*.cache
+
+# ============================================================================
+# SENSITIVE DATA & CREDENTIALS
+# ============================================================================
+# NEVER commit token caches or credentials
+data/.token_cache.json
+data/.token*
+data/tokens/
+credentials/
+*.bin
+*.key
+*.pem
+*.pfx
+*.p12
+.credentials
+.secrets
+secrets.json
+config.local.json
+config.*.json
+!config/config.example.json
+
+# ============================================================================
+# TEMPORARY & BUILD ARTIFACTS
+# ============================================================================
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.orig
+
+# Build artifacts
+build/
+dist/
+release/
+*.zip
+*.tar.gz
+*.7z
+
+# Test artifacts & temporary test files
+test-results/
+coverage/
+test-output/
+
+# ============================================================================
+# SYSTEM & PLATFORM SPECIFIC
+# ============================================================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+.directory
+.Trash-*
+
+# ============================================================================
+# POWERSHELL & APPLICATION SPECIFIC
+# ============================================================================
+# PowerShell history
+.PSHistory
+PSHistory.txt
+ConsoleHost_history.txt
+
+# PowerShell module caches
+*.psc1
+pscx_*
+ModuleManifest_*.json
+
+# Application temp directories
+watcher-*.tmp
+monitor-*.tmp
+scheduler-*.tmp
+
+# ============================================================================
+# NODE.JS (if ever needed)
+# ============================================================================
+node_modules/
+npm-debug.log
+yarn.lock
+package-lock.json
+
+# ============================================================================
+# PYTHON (if ever needed)
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# ============================================================================
+# DOCKER (if ever needed)
+# ============================================================================
+.dockerignore
+docker-compose.override.yml
+
+# ============================================================================
+# TESTING ARTIFACTS
+# ============================================================================
+# Pester test outputs
+Test-Results.xml
+TestResults*.xml
+test-reports/
+*.trx

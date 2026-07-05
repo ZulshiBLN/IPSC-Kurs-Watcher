@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "monitors": [
+    {
+      "id": "shooting-store",
+      "provider": "shooting-store",
+      "enabled": true,
+      "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
+      "base_url": "https://www.shooting-store.ch",
+      "timeout_seconds": 30,
+      "retry_attempts": 3,
+      "poll_interval_minutes": 30
+    }
+  ],
+  "filters": {
+    "course_types": [
+      {
+        "id": "basic",
+        "name": "Basic",
+        "patterns": ["Basic"],
+        "enabled": true
+      },
+      {
+        "id": "stages",
+        "name": "Stages",
+        "patterns": ["Stages", "Stage"],
+        "enabled": true
+      }
+    ],
+    "exclude_patterns": ["Privatunterricht", "VIP"],
+    "min_availability": 1
+  },
+  "notifiers": {
+    "windows_toast": {
+      "enabled": false,
+      "sound_enabled": false
+    },
+    "email": {
+      "enabled": false,
+      "recipients": ["test@example.com"],
+      "provider": "graph",
+      "token_cache_path": "tests/fixtures/data/.token_cache.json"
+    },
+    "discord": {
+      "enabled": false,
+      "webhook_urls": []
+    }
+  },
+  "state": {
+    "file_path": "tests/fixtures/data/test-state.json",
+    "retention_days": 30
+  },
+  "logging": {
+    "log_dir": "tests/fixtures/logs",
+    "log_level": "INFO",
+    "retention_days": 30,
+    "format": "json"
+  },
+  "error_handling": {
+    "alert_on_repeated_errors": false,
+    "error_threshold": 5,
+    "error_window_minutes": 60
+  }
+}
