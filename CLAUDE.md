@@ -214,6 +214,35 @@ Neue Features nach Scope:
 3. **Collaboration-Update** (Claude-spezifisch) → Anpassung in [CLAUDE.md](CLAUDE.md)
 4. **Große Features** → `/plan` starten vor Code
 
+**Regel 5.4 - Git Worktree Local Strategy**
+Repository nutzt Git Worktrees für isolierte Branch-Verzeichnisse:
+
+**Setup (lokal):**
+```
+C:\Repos\IPSC Kurs Watcher\
+├─ .git/                    ← Zentral (von allen Worktrees geteilt)
+├─ main/                    ← Production (Scheduled Task läuft hier)
+├─ develop/                 ← Development (Feature-Arbeit)
+└─ prerelease/              ← Beta Testing
+```
+
+**Regeln:**
+- ✅ Scheduled Task **immer** von `main/` worktree ausführen (stabil)
+- ✅ Feature-Entwicklung in `develop/` worktree
+- ✅ Beta-Testing in `prerelease/` worktree
+- ✅ Jeder worktree ist checkout auf seiner Branch
+- ❌ Nicht alle drei Branches in einem Directory mixen
+- ❌ Root repository nicht für Entwicklung nutzen (nur git-Verwaltung)
+
+**Einzelne Branches updaten:**
+```powershell
+cd main && git pull && cd ..
+cd develop && git pull && cd ..
+cd prerelease && git pull && cd ..
+```
+
+**Siehe:** [docs/LOCAL_WORKTREE_SETUP.md](docs/LOCAL_WORKTREE_SETUP.md) – Vollständige Anleitung
+
 ---
 
 ### Decision Making & Architecture
