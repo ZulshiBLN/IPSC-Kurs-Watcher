@@ -1,4 +1,4 @@
-name: Release & Publish to PSGallery
+name: Release & Publish to PSGallery & GitHub Packages
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   release:
@@ -144,7 +145,83 @@ jobs:
             -ModulePath "." `
             -ErrorAction Stop
 
-          Write-Host "✓ Publishing to PowerShell Gallery completed!"
+          Write-Host "[OK] Publishing to PowerShell Gallery completed!"
+
+      - name: Publish to GitHub Packages (All Releases)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          Write-Host ""
+          Write-Host "=========================================="
+          Write-Host "Publishing to GitHub Packages"
+          Write-Host "=========================================="
+          Write-Host ""
+          Write-Host "Version: ${{ steps.version.outputs.version }}"
+          Write-Host "Is Pre-Release: ${{ steps.version.outputs.is_prerelease }}"
+          Write-Host ""
+
+          # Create staging directory for GitHub Packages
+          $tempDir = [System.IO.Path]::GetTempPath()
+          $tempStaging = Join-Path $tempDir "GitHubPackages-IPSCKursWatcher-$(Get-Random)"
+          $moduleDir = Join-Path $tempStaging "IPSCKursWatcher"
+
+          try {
+            Write-Host "Creating staging directory..."
+            New-Item -ItemType Directory -Path $moduleDir -Force | Out-Null
+
+            # Copy module files
+            Copy-Item "IPSCKursWatcher.psd1" -Destination "$moduleDir/IPSCKursWatcher.psd1" -Force
+            Write-Host "[OK] Copied manifest"
+
+            Copy-Item "IPSCKursWatcher.psm1" -Destination "$moduleDir/IPSCKursWatcher.psm1" -Force
+            Write-Host "[OK] Copied PSM1 module"
+
+            if (Test-Path "src") {
+              Copy-Item "src" -Destination "$moduleDir/src" -Recurse -Force
+              Write-Host "[OK] Copied source files"
+            }
+
+            if (Test-Path "docs") {
+              Copy-Item "docs" -Destination "$moduleDir/docs" -Recurse -Force
+              Write-Host "[OK] Copied documentation"
+            }
+
+            Write-Host ""
+            Write-Host "Publishing to GitHub Packages..."
+
+            # Publish to GitHub Packages
+            Publish-Module -Path $moduleDir `
+              -NuGetApiKey $env:GITHUB_TOKEN `
+              -Repository "https://nuget.pkg.github.com/ZulshiBLN/index.json" `
+              -Force `
+              -ErrorAction Stop
+
+            Write-Host ""
+            Write-Host "=========================================="
+            Write-Host "[OK] Published to GitHub Packages!"
+            Write-Host "=========================================="
+            Write-Host ""
+            Write-Host "Available at:"
+            Write-Host "  https://github.com/ZulshiBLN/packages/IPSCKursWatcher"
+            Write-Host ""
+            Write-Host "Installation:"
+            Write-Host "  Register-PSRepository -Name GitHub ..."
+            Write-Host "  Install-Module -Name IPSCKursWatcher -Repository GitHub"
+
+          } catch {
+            Write-Host ""
+            Write-Host "[ERROR] Failed to publish to GitHub Packages"
+            Write-Host ""
+            Write-Error $_
+            exit 1
+
+          } finally {
+            # Cleanup
+            if (Test-Path $tempStaging) {
+              Remove-Item $tempStaging -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
 
       - name: Verify PowerShell Gallery Publication
         shell: pwsh
