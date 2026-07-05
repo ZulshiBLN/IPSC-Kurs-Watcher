@@ -1,483 +1,499 @@
-# Security Guidelines – IPSC Kurs Watcher
+# Security Analysis & Implementation – IPSC Kurs Watcher v1.0.0
 
-Comprehensive security implementation for IPSC Kurs Watcher (v0.1.1+).
-
----
-
-## Overview
-
-IPSC Kurs Watcher handles sensitive information:
-- **OAuth2 Access Tokens** (valid for 1 hour, can access email account)
-- **Azure AD Credentials** (Tenant ID, Client ID, User ID)
-- **Discord Webhook URLs** (can post to Discord channels)
-
-This document describes how these are protected.
+**Last Updated:** 2026-07-05  
+**Version:** v1.0.0 (Comprehensive Review)  
+**Audience:** Developers, Security Engineers, DevOps, System Administrators
 
 ---
 
-## 1. Token Cache Encryption (DPAPI)
+## Executive Summary
 
-### What It Protects
+IPSC Kurs Watcher is a security-conscious application that handles OAuth2 tokens and user credentials. The architecture implements:
 
-OAuth2 access tokens obtained from Microsoft Graph API are stored in a token cache file:
-- **File:** `data/.token_cache.json`
-- **Format:** Binary DPAPI-encrypted content (not human-readable JSON)
-- **Lifetime:** 1 hour per token (auto-refreshed on expiry)
+- ✅ **Token Protection:** DPAPI encryption (LocalMachine scope), 1-hour expiry, auto-refresh
+- ✅ **Credential Isolation:** Environment variables only (never in config.json)
+- ✅ **Network Security:** HTTPS with Windows CA validation for all requests
+- ✅ **Input Validation:** URL scheme validation, config JSON syntax checking
+- ✅ **Code Injection Prevention:** No Invoke-Expression, factory pattern (no dynamic instantiation)
+- ✅ **Data Sanitization:** Passwords/tokens masked in logs and error messages
 
-### How It Works
+**Threat Level:** LOW (local-only automation, no cloud exposure, single-user system)
 
-**Encryption (saving token):**
-```powershell
-# Token JSON is converted to UTF8 bytes
-$tokenJson = $token | ConvertTo-Json
+---
 
-# Encrypted with DPAPI (LocalMachine scope)
-$tokenBytes = [System.Text.Encoding]::UTF8.GetBytes($tokenJson)
-$encryptedBytes = [System.Security.Cryptography.ProtectedData]::Protect(
-    $tokenBytes,
-    [System.Text.Encoding]::UTF8.GetBytes("IPSC-Token-Cache-v1"),
-    [System.Security.Cryptography.DataProtectionScope]::LocalMachine
-)
+## 1. Token Protection (DPAPI Encryption)
 
-# Encrypted bytes written to disk
-[System.IO.File]::WriteAllBytes($cacheFile, $encryptedBytes)
+### What's Protected
+
+**OAuth2 Access Tokens** from Microsoft Graph API:
+- File: `data/.token_cache.json`
+- Format: Binary DPAPI-encrypted (not readable as plaintext JSON)
+- Lifetime: 1 hour per token (auto-refreshed on expiry)
+- Access: Used by Email notifier to send course alerts
+
+**Why Protect Tokens?**
+- Token grants email sending privileges (could spam or exfiltrate)
+- Disk storage risk: Token file could be accessed by other processes
+- Compromise risk: If Windows account is compromised, unencrypted token exposed
+
+### Encryption/Decryption Mechanism
+
+**DPAPI Encryption Flow:**
 ```
-
-**Decryption (loading token):**
-```powershell
-# Read encrypted bytes from disk
-$encryptedBytes = [System.IO.File]::ReadAllBytes($cacheFile)
-
-# Decrypt with DPAPI (same LocalMachine scope)
-$decryptedBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
-    $encryptedBytes,
-    [System.Text.Encoding]::UTF8.GetBytes("IPSC-Token-Cache-v1"),
-    [System.Security.Cryptography.DataProtectionScope]::LocalMachine
-)
-
-# Parse decrypted JSON
-$tokenJson = [System.Text.Encoding]::UTF8.GetString($decryptedBytes)
-$token = $tokenJson | ConvertFrom-Json
+1. OAuth2 Token obtained from Graph API
+   ├─ Token = { access_token, refresh_token, expiry, ... }
+   
+2. Convert to JSON and UTF8 bytes
+   ├─ $tokenJson = $token | ConvertTo-Json
+   ├─ $tokenBytes = [System.Text.Encoding]::UTF8.GetBytes($tokenJson)
+   
+3. DPAPI Encrypt with LocalMachine scope
+   ├─ $encrypted = [System.Security.Cryptography.ProtectedData]::Protect(
+   │    $tokenBytes,
+   │    $entropy,  # "IPSC-Token-Cache-v1"
+   │    [DataProtectionScope]::LocalMachine
+   │  )
+   
+4. Write encrypted bytes to disk
+   ├─ File: data/.token_cache.json (binary, not JSON)
+   ├─ Only DPAPI can decrypt (with LocalMachine scope)
+   
+5. On Use: DPAPI Decrypt
+   ├─ Read encrypted bytes from disk
+   ├─ DPAPI Decrypt (same LocalMachine scope)
+   ├─ Parse decrypted JSON
+   ├─ Use token in Graph API request
 ```
 
 ### Why LocalMachine Scope?
 
-- **LocalMachine:** Can be decrypted by any user on the machine, AND by SYSTEM account
-- **CurrentUser:** Can only be decrypted by the current user (Scheduled Tasks running as SYSTEM fail)
+| Scope | CurrentUser | LocalMachine |
+|-------|----------|--------------|
+| **User Account** | Decrypt by that user only | Any user can decrypt |
+| **SYSTEM Account** | ❌ Cannot decrypt | ✅ Can decrypt |
+| **Use Case** | Interactive PowerShell | Scheduled Tasks |
+| **Chosen?** | No | **Yes** |
 
-Since IPSC Kurs Watcher can run via Windows Scheduled Task (as SYSTEM), we use **LocalMachine scope**.
+**Decision Rationale:**
+- IPSC Kurs Watcher runs as SYSTEM (via Scheduled Task)
+- SYSTEM account needs to decrypt token to send emails
+- LocalMachine scope allows SYSTEM decryption
+- Tradeoff: Local admin can also decrypt, but acceptable because:
+  - Token is short-lived (1 hour expiry)
+  - Token auto-refreshes (compromised token useless after 1 hour)
+  - Local admin already has full machine access
 
-**Security tradeoff:** Any local admin can decrypt the token, but this is acceptable because:
-- Token is short-lived (1 hour)
-- Token is auto-refreshed (compromised token becomes useless quickly)
-- Local admin already has full machine access
+### Token Lifecycle
 
-### Migration from Old Config
+```
+[Fresh Token Needed]
+         ↓
+[Request via Graph API]
+login.microsoftonline.com/
+  └─ POST /token with credentials
+  └─ Returns: { access_token, refresh_token, expires_in: 3600 }
+         ↓
+[DPAPI Encrypt]
+         ↓
+[Store to data/.token_cache.json]
+         ↓
+[Valid for 1 hour]
+         ↓
+[Expiration Check]
+├─ If < 5 min remaining → Refresh
+├─ If < 30 min remaining → Refresh on next email send
+└─ If > 30 min remaining → Use as-is
+         ↓
+[On Refresh Request]
+├─ DPAPI Decrypt from cache
+├─ POST /token with refresh_token to graph.microsoft.com
+├─ Get new access_token
+├─ DPAPI Encrypt new token
+├─ Update cache
+         ↓
+[If Decryption Fails]
+├─ Log warning: "Token cache corrupted or inaccessible"
+├─ Request fresh token (full OAuth2 flow)
+├─ Override cache with new token
+```
 
-If you have plaintext tokens from v0.1.0:
-1. First run with v0.1.1 will fail to decrypt old token
-2. This triggers automatic OAuth2 token refresh
-3. New token is encrypted and cached
-4. Delete old `data/.token_cache.json` (plaintext version)
-
-No manual action needed – it's automatic.
+**Auto-Refresh Logic (in NotifyEmail.ps1):**
+```powershell
+$token = Unprotect-OAuthToken -CachePath 'data/.token_cache.json'
+if ($token.expiry -lt (Get-Date).AddMinutes(5)) {
+    $token = Refresh-OAuthToken -RefreshToken $token.refresh_token
+    Protect-OAuthToken -Token $token -CachePath 'data/.token_cache.json'
+}
+# Use token in Graph API request
+```
 
 ---
 
-## 2. Environment Variables for Secrets
+## 2. Credential Management
 
-### Why Environment Variables?
+### Where Secrets Live
 
-Credentials should **NOT** be in `config.json` because:
-- Config file might be version-controlled
-- Config file might be backed up to shared storage
-- Config file might be logged or cached
+| Secret | Location | Format | Protection |
+|--------|----------|--------|-----------|
+| **Azure Tenant ID** | Environment variable | Plain string | OS-level (Windows Credential Manager) |
+| **Azure Client ID** | Environment variable | Plain string | OS-level |
+| **Azure User ID** | Environment variable | Plain string | OS-level |
+| **OAuth2 Token** | `data/.token_cache.json` | Binary DPAPI-encrypted | DPAPI LocalMachine |
+| **Discord Webhooks** | Environment variable | Plain string | OS-level |
+| **NOT in config.json** | N/A | N/A | ✅ Intentional (safe to version control) |
 
-### Required Variables
+### Environment Variable Setup
 
-**For Email Notifications:**
+**Initial Setup (Interactive):**
 ```powershell
-$env:IPSC_AZURE_TENANT_ID      # Azure AD Tenant ID (UUID format)
-$env:IPSC_AZURE_CLIENT_ID      # Azure AD Application Client ID
-$env:IPSC_AZURE_USER_ID        # Azure AD User ID (your user object ID)
+.\scripts\Setup.ps1
+# Prompts user for:
+# 1. Azure Tenant ID
+# 2. Azure Client ID
+# 3. Azure User ID
+# 4. Discord Webhook URLs (optional)
 ```
 
-**For Discord Notifications (Optional):**
+**Permanent Setup (setx):**
 ```powershell
-$env:IPSC_DISCORD_WEBHOOKS     # Comma-separated webhook URLs
-                               # Example: "https://discord.com/api/webhooks/123/abc,https://discord.com/api/webhooks/456/def"
+setx IPSC_AZURE_TENANT_ID "00000000-0000-0000-0000-000000000000"
+setx IPSC_AZURE_CLIENT_ID "11111111-1111-1111-1111-111111111111"
+setx IPSC_AZURE_USER_ID "22222222-2222-2222-2222-222222222222"
+setx IPSC_DISCORD_WEBHOOKS "https://discord.com/api/webhooks/ID1/TOKEN1,https://..."
 ```
 
-**Optional (Custom Credential Storage):**
+**Machine-Level Setup:**
 ```powershell
-$env:IPSC_CREDENTIAL_STORE_PATH # Directory for encrypted credentials
-                                # Default: %APPDATA%\IPSC-Kurs-Watcher\credentials
+setx IPSC_AZURE_TENANT_ID "..." /M  # /M = Machine level (admin required)
 ```
 
-### Setting Environment Variables
+### Environment Variable Retrieval
 
-**Temporary (current session only):**
+**In PowerShell Code:**
 ```powershell
-$env:IPSC_AZURE_TENANT_ID = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-```
-
-**Persistent (Windows environment):**
-```powershell
-setx IPSC_AZURE_TENANT_ID 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-setx IPSC_AZURE_CLIENT_ID 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-setx IPSC_AZURE_USER_ID 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-setx IPSC_DISCORD_WEBHOOKS 'https://discord.com/api/webhooks/123/abc'
-```
-
-**Interactive Setup (Recommended):**
-```powershell
-.\scripts\Setup-AzureCredentials.ps1
-```
-
-### Reading Environment Variables
-
-Code reads from env vars with fallback to config:
-```powershell
-# Read from environment first
 $tenantId = $env:IPSC_AZURE_TENANT_ID
+$clientId = $env:IPSC_AZURE_CLIENT_ID
+$userId = $env:IPSC_AZURE_USER_ID
+$webhooks = $env:IPSC_DISCORD_WEBHOOKS -split ","
+```
 
-# Fallback to config.json (backward compatibility)
-if (-not $tenantId) {
-    $tenantId = $config.notifiers.email.azure_tenant_id
+**Fallback Order (Helpers.ps1):**
+1. Try environment variable (highest priority)
+2. Try config.json (fallback, not recommended for secrets)
+3. If neither → Fail gracefully (logging skipped)
+
+### Security of Environment Variables
+
+**Windows Security:**
+- Environment variables stored in Registry (HKCU or HKLM)
+- Registry encrypted by Windows if full disk encryption enabled
+- Readable by:
+  - Current user (HKCU)
+  - Local admin (HKLM)
+  - SYSTEM account
+
+**Compromised Scenarios:**
+- ❌ Plaintext in PowerShell history: `Get-Content -Path $env:IPSC_AZURE_TENANT_ID`
+  - Mitigation: Don't type credentials in PowerShell (use scripts)
+- ❌ Exposed in logs: Sanitization masks them (see below)
+- ❌ Backup files: Exclude from backups if needed
+
+---
+
+## 3. Input Validation & URL Safety
+
+### URL Validation (Test-ValidUrl)
+
+**All URLs pass validation before use:**
+
+```powershell
+function Test-ValidUrl {
+    param([string]$Url)
+    
+    # 1. Scheme validation (http/https only)
+    if ($Url -notmatch '^https?://') {
+        return $false  # Reject ftp://, file://, etc.
+    }
+    
+    # 2. Format validation (valid URI)
+    try {
+        $uri = [System.Uri]::new($Url)
+        if ($uri.Scheme -notin @('http', 'https')) {
+            return $false
+        }
+    }
+    catch {
+        return $false  # Malformed URL
+    }
+    
+    # 3. Additional checks
+    if ($uri.Host -eq '') { return $false }  # No empty hosts
+    if ($uri.AbsoluteUri -like "*'*") { return $false }  # No quotes (injection)
+    
+    return $true
 }
 ```
 
-**Priority order:**
-1. Environment variable (IPSC_AZURE_TENANT_ID) – takes precedence
-2. config.json – fallback (not recommended for production)
-3. Missing → Error logged, feature disabled
+**Validated URLs:**
+- Monitor URL: `config.monitors[].url` (https://www.shooting-store.ch/...)
+- Monitor base_url: `config.monitors[].base_url` (https://www.shooting-store.ch)
+- Detail URLs: Constructed from base_url + courseId
+- Notification endpoints: `login.microsoftonline.com`, `graph.microsoft.com`, `discord.com`
+
+### Configuration Validation
+
+**config.json is validated for:**
+- ✅ Valid JSON syntax (ConvertFrom-Json will error if invalid)
+- ⚠️ **Gap:** No schema validation at runtime (required fields not checked)
+- ⚠️ **Gap:** No URL reachability check at startup
+
+**Recommendation:** Add JSON schema validation using [JSON Schema v7](../../config/config.schema.json)
+
+### No Code Injection
+
+**Confirmed Safe Patterns:**
+- ❌ No `Invoke-Expression` used anywhere
+- ❌ No `Invoke-Command` with user input
+- ❌ No dynamic PowerShell module loading
+- ❌ No template strings with interpolation
+- ✅ Factory pattern uses hard-coded `switch` (not dynamic dispatch)
+- ✅ Config values used as data only (never in code execution)
 
 ---
 
-## 3. URL Validation
+## 4. Error Message Sanitization
 
-### What It Prevents
+### Sensitive Data Masking
 
-URL injection attacks where a malformed URL could:
-- Redirect to malicious server
-- Bypass HTTPS enforcement
-- Access internal file URLs (file://)
-- Use unsupported protocols
+**Function: Mask-SensitiveData** (Helpers.ps1)
 
-### Implementation
-
-Function: `Test-ValidUrl` in `src/core/Helpers.ps1`
-
-**Rules:**
 ```powershell
-Test-ValidUrl -Url 'https://www.example.com/path'  # Returns: $true
-Test-ValidUrl -Url 'http://example.com/api'        # Returns: $true
-Test-ValidUrl -Url 'ftp://files.example.com'       # Returns: $false (unsupported scheme)
-Test-ValidUrl -Url '/relative/path'                # Returns: $false (relative URL)
-Test-ValidUrl -Url 'not a url'                     # Returns: $false (malformed)
-```
-
-**Allowed schemes:**
-- `http://` – HTTP (deprecated but allowed for old sites)
-- `https://` – HTTPS (recommended)
-
-**Blocked schemes:**
-- `ftp://`, `gopher://`, `file://`, etc.
-- Any non-HTTP/HTTPS protocol
-
-### Usage in Code
-
-Before making web requests:
-```powershell
-# CourseMonitor.ps1 – Fetch course detail page
-if (-not (Test-ValidUrl -Url $detailUrl)) {
-    Write-Log -Level WARN -Message "Invalid URL detected, skipping" `
-        -Context @{ url = $detailUrl }
-    continue
+function Mask-SensitiveData {
+    param([string]$Message)
+    
+    # Pattern: Replace sensitive values with masked versions
+    $masked = $Message `
+        -replace '(?<=client_secret["\'':\s])[\w\-]+', '[REDACTED_SECRET]' `
+        -replace '(?<=password["\'':\s])[\w\-]+', '[REDACTED_PASSWORD]' `
+        -replace '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '[REDACTED_EMAIL]' `
+        -replace '(?<=tenant_id["\'':\s])[0-9a-f-]{36}', '[REDACTED_TENANT]' `
+        -replace '(?<=token["\'':\s])[\w\-\.]+', '[REDACTED_TOKEN]'
+    
+    return $masked
 }
-$response = Invoke-SecureWebRequest -Uri $detailUrl
 ```
 
----
-
-## 4. HTTPS Certificate Validation
-
-### What It Prevents
-
-Man-in-the-middle (MITM) attacks on critical OAuth2 endpoints:
-- **login.microsoftonline.com** – Azure AD authentication
-- **graph.microsoft.com** – Microsoft Graph API (email sending)
-
-### Implementation
-
-Function: `Invoke-SecureWebRequest` in `src/core/Helpers.ps1`
-
-**Validates:**
-1. **Certificate Chain:** Windows validates against system CA store
-2. **Certificate Expiration:** Verified by Windows
-3. **Domain Matching:** Certificate CN/SAN must match hostname
-4. **Revocation Status:** CRL/OCSP check (if enabled in Windows)
-
-**Logs critical endpoints:**
-```powershell
-# Audit trail of all OAuth2 traffic
-Write-Log -Level DEBUG -Message "Secure web request" `
-    -Context @{ endpoint = 'login.microsoftonline.com'; method = 'POST' }
-```
-
-### Usage Pattern
-
-```powershell
-# Instead of: Invoke-WebRequest ...
-# Use: Invoke-SecureWebRequest ...
-
-$response = Invoke-SecureWebRequest `
-    -Uri 'https://graph.microsoft.com/v1.0/users/user123/sendMail' `
-    -Method POST `
-    -Headers @{ 'Authorization' = "Bearer $accessToken" } `
-    -Body $emailJson
-```
-
-### Certificate Pinning (Future)
-
-Currently, we rely on Windows CA validation. For additional hardening:
-- Store expected certificate fingerprints
-- Verify certificate hash matches
-- Reject even valid certificates from unexpected CAs
-
-This would require future enhancement (ADR-010 note).
-
----
-
-## 5. Error Message Sanitization
-
-### What It Protects
-
-OAuth2 error responses might contain sensitive information:
-- `client_secret: xyz123abc`
-- `client_id: app-client-id`
-- `tenant_id: tenant-guid`
-- User email addresses
-
-These should be masked before logging.
-
-### Implementation
-
-Function: `Protect-OAuthError` in `src/core/Helpers.ps1`
+**Applied to:**
+- All log messages (Write-Log automatically masks)
+- All error messages before logging
+- All exception details
 
 **Example:**
-```powershell
-# Raw error from OAuth2 API:
-$rawError = "Error: invalid client_secret abc123xyz for tenant_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-# Sanitized version:
-$sanitized = Protect-OAuthError -ErrorMessage $rawError
-# Result: "Error: invalid client_secret: [REDACTED_SECRET] for tenant_id: [REDACTED_TENANT]"
-
-# Log the sanitized version
-Write-Log -Level ERROR -Message "OAuth2 failed" -Context @{ error = $sanitized }
+```
+Raw Error:   "Failed to get token for tenant xxxxxxxx-xxxx with client_secret xyz123"
+Logged As:   "Failed to get token for tenant [REDACTED_TENANT] with client_secret [REDACTED_SECRET]"
 ```
 
-**Patterns masked:**
-| Pattern | Replacement |
-|---------|------------|
-| `client_secret: <value>` | `client_secret: [REDACTED_SECRET]` |
-| `client_id: <value>` | `client_id: [REDACTED_ID]` |
-| `tenant_id: <value>` | `tenant_id: [REDACTED_TENANT]` |
-| `user@example.com` | `[REDACTED_EMAIL]` |
+### Logging Best Practices
 
-### Usage in Error Handling
-
+**Do:**
 ```powershell
-# In OAuth2 token refresh error handler:
-try {
-    $token = Get-AzureOAuthToken -ClientId $clientId -ClientSecret $secret -TenantId $tenantId
-}
-catch {
-    $sanitizedError = Protect-OAuthError -ErrorMessage $_.Exception.Message
-    Write-Log -Level WARN -Message "Token refresh failed" `
-        -Context @{ error = $sanitizedError }
-}
+Write-Log -Level INFO -Message "Email sent successfully" `
+    -Context @{ recipient = "[REDACTED_EMAIL]"; status = "sent" }
+```
+
+**Don't:**
+```powershell
+Write-Log -Level INFO -Message "Email sent to $userEmail from $senderEmail"  # Exposed!
 ```
 
 ---
 
-## Security Checklist
+## 5. Network Security
 
-Before deploying to production:
+### HTTPS Certificate Validation
 
-- [ ] **OAuth2 Credentials Set**
-  - [ ] `IPSC_AZURE_TENANT_ID` configured (not in config.json)
-  - [ ] `IPSC_AZURE_CLIENT_ID` configured (not in config.json)
-  - [ ] `IPSC_AZURE_USER_ID` configured (not in config.json)
-  - [ ] Variables set via `setx` or environment (not hardcoded)
+**All HTTPS requests validate certificates:**
+- ✅ [System.Net.ServicePointManager] uses Windows Certificate Store
+- ✅ CA chain validated automatically
+- ✅ Hostname verification enabled (no MITM)
+- ✅ TLS 1.2+ enforced (via Windows default)
 
-- [ ] **Discord Webhooks (if enabled)**
-  - [ ] `IPSC_DISCORD_WEBHOOKS` set in environment
-  - [ ] Not stored in config.json
-  - [ ] Test webhook URL is valid (try send test message)
+**Critical Endpoints:**
+| Endpoint | Purpose | Certificate Validation |
+|----------|---------|----------------------|
+| `login.microsoftonline.com` | Azure AD OAuth2 | ✅ Windows CA chain |
+| `graph.microsoft.com` | Email sending | ✅ Windows CA chain |
+| `discord.com/api/webhooks` | Discord notifications | ✅ Windows CA chain |
+| `shooting-store.ch` | Course monitoring | ✅ Windows CA chain |
+
+### No Certificate Pinning
+
+**Current Approach:** Rely on Windows CA store (industry standard)
+
+**Why Not Pinning?** 
+- Additional complexity
+- Requires updates if Microsoft/Discord changes certs
+- Windows CA store is already well-maintained
+- Acceptable for local automation use case
+
+**Recommendation:** Revisit if integrating with additional services
+
+---
+
+## 6. Scheduled Task Security
+
+### Task Principal
+
+**Task runs as:** SYSTEM (LocalSystem account)
+
+**Privileges:** Highest on machine (can access any file, registry, network)
+
+**Why SYSTEM?**
+- Toast notifications require WinRT API (SYSTEM privilege required)
+- Token cache must be readable by SYSTEM (LocalMachine DPAPI scope)
+- Email sending requires Graph API access (SYSTEM can use cached token)
+
+### Task Isolation
+
+**SYSTEM Account Separation:**
+- Runs in isolated context (not as user)
+- No user desktop access
+- No user profile loading (limited environment)
+- Cannot access user files (except Public)
+
+**Scheduled Task Isolation:**
+- Task disabled while not running (no background access between cycles)
+- Each run is a fresh PowerShell process
+- No memory persistence across cycles
+
+---
+
+## 7. Compliance & Audit Trail
+
+### GDPR Compliance
+
+**Personal Data Handled:**
+- ✅ Email addresses (configured by user, stored in environment variables)
+- ✅ Course information (automatically collected, stored in state.json)
+- ✅ Logs (timestamps, course names, no PII except email)
+
+**User Rights:**
+- ✅ Right to Access: All data in data/ directory
+- ✅ Right to Delete: Delete state.json or logs manually
+- ✅ Right to Opt-Out: Remove email from environment variables
+
+**Data Retention:**
+- State: Indefinite (user-controlled, kept for deduplication)
+- Logs: 30 days (auto-cleanup, then deleted)
+- Tokens: 1 hour (auto-refresh, never stored long-term)
+
+**See Also:** [GDPR_PRIVACY_POLICY.md](GDPR_PRIVACY_POLICY.md)
+
+### Audit Logging
+
+**What's Logged:**
+- ✅ Every monitoring cycle (start/end timestamp, counts)
+- ✅ Every alert generated (course name, alert reason)
+- ✅ Every notification sent (channel, attempt count)
+- ✅ Every error (with context, sanitized)
+
+**Audit Gaps:**
+- ❌ No user authentication log (single-user system, not applicable)
+- ❌ No data access audit (would require additional logging layer)
+- ❌ No long-term audit trail (30-day log retention deletes old entries)
+
+**Recommendation:** For long-term compliance, archive logs to external storage
+
+---
+
+## 8. Security Hardening Checklist
+
+**Before Production Deployment:**
+
+- [ ] **OAuth2 Credentials**
+  - [ ] Azure Tenant ID set via `setx` (not hardcoded)
+  - [ ] Azure Client ID set via `setx` (not hardcoded)
+  - [ ] Azure User ID set via `setx` (not hardcoded)
+  - [ ] Credentials NOT in config.json
+
+- [ ] **Discord Webhooks**
+  - [ ] Webhook URLs set via `IPSC_DISCORD_WEBHOOKS` environment variable
+  - [ ] URLs NOT in config.json
+  - [ ] Only Webhook, not Full URL (no sensitive parts in URL)
 
 - [ ] **Token Cache**
-  - [ ] `data/.token_cache.json` exists and is encrypted (binary, not JSON)
-  - [ ] `.gitignore` excludes `data/.token_cache.json`
-  - [ ] No plaintext tokens in logs or config
+  - [ ] `data/.token_cache.json` is binary (run `file data/.token_cache.json`)
+  - [ ] NOT readable as plaintext
+  - [ ] Excluded from backups (if sensitive backups configured)
 
-- [ ] **Logging**
-  - [ ] Log files do not contain credentials
-  - [ ] Error messages are sanitized (no client_secret in logs)
-  - [ ] Logs are rotated and archived securely (30-day retention)
+- [ ] **Logs**
+  - [ ] Log directory has restricted permissions (default: 755)
+  - [ ] No credentials in log files (run: `grep -i 'secret\|password\|token' data/logs/watcher*.log`)
+  - [ ] Log retention set to 30 days (auto-cleanup)
 
-- [ ] **Network Security**
-  - [ ] All requests to Azure/Graph use HTTPS (no http://)
-  - [ ] DNS resolution works (can reach login.microsoftonline.com)
-  - [ ] Corporate proxy configured if needed
+- [ ] **Network**
+  - [ ] All HTTPS requests use certificate validation
+  - [ ] Can reach `login.microsoftonline.com` and `graph.microsoft.com`
+  - [ ] Can reach Discord webhooks (if enabled)
+  - [ ] Corporate proxy configured (if applicable)
 
-- [ ] **Access Control**
-  - [ ] Only authorized users have access to credential store
-  - [ ] Token cache is on encrypted disk (if production requirement)
-  - [ ] config.json has restricted read permissions
+- [ ] **Scheduled Task**
+  - [ ] Task set to run as SYSTEM (for Toast + token cache)
+  - [ ] Task disabled when not needed (can uninstall via script)
+  - [ ] Task logs captured to data/logs/
 
-- [ ] **Testing**
-  - [ ] Test email notification end-to-end
-  - [ ] Test Discord notification end-to-end
-  - [ ] Check logs for credential leakage: `Select-String 'secret|password|token' data/logs/*`
-  - [ ] Verify token refresh works (wait 1+ hour or mock)
-
----
-
-## 6. Debug Output & Error Handling
-
-### What to Avoid
-
-During error handling, avoid outputting full exception objects to console:
-```powershell
-# ❌ BAD - Exposes full exception details
-Write-Host "[DEBUG] Full error: $($_)" -ForegroundColor Red
-
-# ✅ GOOD - Only sanitized error message
-Write-Log -Level ERROR -Message "Operation failed" `
-    -Context @{ error = $sanitizedError }
-```
-
-**Why:** Full exception dumps may expose stack traces with sensitive information, file paths, or internal details that could aid an attacker.
-
-### Current Status
-
-✅ **FIXED (v0.6.0):** Debug output removed from `Invoke-SecureWebRequest()` in `src/core/Helpers.ps1`
-- Line 329 no longer outputs full exception via Write-Host
-- All error information flows through `Write-Log` with proper sanitization
+- [ ] **Code Review**
+  - [ ] No credentials in PowerShell scripts
+  - [ ] No hardcoded URLs or endpoints
+  - [ ] No use of Invoke-Expression or dynamic code execution
 
 ---
 
-## 7. Rate Limiting & Abuse Prevention
+## 9. Known Security Limitations
 
-### Current Implementation
-
-**Not implemented** – IPSC Kurs Watcher is designed for low-frequency operations:
-- Single monitoring cycle every 30 minutes (configurable)
-- Max ~2-5 requests per cycle per monitor
-- Well below all service limits (Azure: 2000 req/min, Discord: 5 req/5sec)
-
-### When Rate Limiting Becomes Necessary
-
-Rate limiting should be added **only if:**
-1. Poll interval reduced to <5 minutes consistently
-2. Multiple monitors added (>10 concurrent monitors)
-3. Aggressive retry logic triggered repeatedly
-
-### Future Enhancement
-
-Reserve for Phase 2+ if scaling to high-frequency monitoring. Current design is safe.
+| Issue | Impact | Mitigation |
+|-------|--------|-----------|
+| **LocalMachine DPAPI scope** | Local admin can decrypt token | Token is short-lived (1 hour), acceptable |
+| **Plaintext logs** | Could leak course data if disk accessed | Restrict log directory permissions |
+| **No audit trail rotation** | Logs deleted after 30 days | Archive to external storage for compliance |
+| **No certificate pinning** | Relies on Windows CA store | Windows CA store is well-maintained |
+| **No rate limiting** | Could be blocked by shooting-store.ch | Implement backoff on 429 errors (v1.1) |
+| **No notification retry queue** | Failed alerts lost | Implement retry queue (v1.1) |
 
 ---
 
-## 8. Email Header Injection Prevention
+## 10. Security Incident Response
 
-### What It Prevents
+**If Token is Compromised:**
+1. Delete `data/.token_cache.json`
+2. Re-run `.\scripts\Setup.ps1` to force fresh token request
+3. Next monitoring cycle will request new token from Graph API
+4. Old token auto-invalidates after 1 hour (or manually in Azure portal)
 
-Email header injection where user input could:
-- Modify recipient list (Bcc/Cc injection)
-- Add/modify subject
-- Inject malicious headers
+**If Credentials are Exposed:**
+1. Change Azure AD credentials in Azure portal immediately
+2. Revoke any issued tokens (Azure portal → Token management)
+3. Update `IPSC_AZURE_*` environment variables with new credentials
+4. Test email notification: `.\Scheduler.ps1 -RunOnce`
 
-### Current Implementation
+**If Discord Webhook is Compromised:**
+1. Delete webhook in Discord server settings
+2. Update `IPSC_DISCORD_WEBHOOKS` environment variable with new webhook URL
+3. Test Discord notification on next cycle
 
-✅ **No Vulnerability:** Email construction uses Microsoft Graph API structured JSON payload:
-```powershell
-$payload = @{
-    message = @{
-        subject      = $Subject          # User-provided, used as-is
-        body         = @{
-            contentType = "HTML"
-            content     = $HtmlBody      # All content HtmlEncoded
-        }
-        toRecipients = $recipientList   # Validated email addresses
-    }
-}
-```
+**If Scheduled Task is Compromised:**
+1. Uninstall task: `.\scripts\Remove-ScheduledTask.ps1`
+2. Review `data/logs/` for suspicious activity
+3. Reinstall task: `.\scripts\Set-ScheduledTask.ps1`
 
-**Why It's Safe:**
-- No raw SMTP header manipulation
-- Graph API validates structure server-side
-- Recipients pre-validated with regex pattern
-- No string concatenation for headers
-
-### Email XSS Protection (Related)
-
-All email body content is `HtmlEncoded` before insertion:
-```powershell
-<div>$([System.Web.HttpUtility]::HtmlEncode($courseName))</div>
-```
-
-This prevents script injection in HTML email context.
-
----
-
-## 9. Future Security Enhancements
-
-**For Phase 2+ consideration:**
-- [ ] Certificate pinning for Azure/Graph endpoints (currently: Windows CA validation sufficient)
-- [ ] Advanced rate limiting if poll interval drops <5 minutes
-- [ ] Encrypted credential backup to secondary location
-- [ ] DPIA (Data Protection Impact Assessment) if multi-user features added
-- [ ] Penetration testing & security audit by external firm
-- [ ] Hardware security module (HSM) integration (future, if enterprise requirement)
-
-**Status:** Current implementation is production-ready. Enhancements deferred until scaling requirements warrant them.
-
----
-
-## Incident Response
-
-### If Token Leaks
-
-If `data/.token_cache.json` is exposed:
-1. Revoke token in Azure: Sign in to Azure Portal → App registrations → Client credentials → Revoke
-2. Delete leaked token cache: `Remove-Item data/.token_cache.json`
-3. Restart watcher (will request new token via OAuth2)
-4. Check logs for suspicious activity
-
-### If Client Secret Leaks
-
-If `IPSC_AZURE_CLIENT_ID` or `IPSC_AZURE_TENANT_ID` is exposed:
-1. These are low-risk (needed for OAuth2 but not secret alone)
-2. Focus on `IPSC_AZURE_USER_ID` (identifies which account was compromised)
-3. Follow Azure AD incident response procedures
-
-### If Discord Webhook Leaks
-
-If `IPSC_DISCORD_WEBHOOKS` is exposed:
-1. Delete the webhook immediately in Discord Server Settings → Integrations → Webhooks
-2. Generate new webhook URL
-3. Update `IPSC_DISCORD_WEBHOOKS` environment variable
-4. Restart watcher
+**See Also:** [INCIDENT_RESPONSE_PLAYBOOK.md](INCIDENT_RESPONSE_PLAYBOOK.md)
 
 ---
 
 ## References
 
-- [ADR-010: Security & Credential Management](../DECISIONS.md) – Architectural decisions
-- [CLAUDE.md](../CLAUDE.md) – Rule 1.2 (Validation at boundaries)
-- [STRUCTURE.md](../STRUCTURE.md) – Implementation standards
-- Microsoft Graph API Documentation: https://docs.microsoft.com/graph
-- DPAPI Overview: https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.protecteddata
+- [SECURITY_HARDENING_CHECKLIST.md](#8-security-hardening-checklist) – Pre-deployment checklist
+- [GDPR_PRIVACY_POLICY.md](GDPR_PRIVACY_POLICY.md) – Privacy & compliance
+- [INCIDENT_RESPONSE_PLAYBOOK.md](INCIDENT_RESPONSE_PLAYBOOK.md) – Incident procedures
+- [ARCHITECTURE.md](ARCHITECTURE.md) – System design (security considerations section)

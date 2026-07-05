@@ -1,273 +1,33 @@
-# Configuration Schema Documentation
+# Configuration Schema Reference – IPSC Kurs Watcher v1.0.0
 
-Complete JSON schema reference and configuration examples for IPSC Kurs Watcher.
+**Last Updated:** 2026-07-05  
+**Version:** v1.0.0  
+**Audience:** Users, Administrators, Developers
 
 ---
 
-## 1. Configuration File Location
+## File Location & Structure
 
-**File Path:** `config/config.json`
+**Primary Config File:** `config/config.json`
 
-**How it's loaded:**
-```powershell
-# At startup (BasicCourseWatcher.ps1)
-$config = Get-Config -Path "config/config.json"
+**Loading Flow:**
+```
+Scheduler.ps1
+  ├─ Get-Config -ConfigPath 'config/config.json'
+  ├─ ConvertFrom-Json → Parse JSON
+  ├─ Basic validation (file exists, valid JSON)
+  └─ Return PSCustomObject with all sections
 ```
 
 **Validation:**
-- Schema validation: `config/config.schema.json`
-- Runtime validation: Type checking, range validation
-- Invalid config → Startup fails with error message
+- ✅ File exists check (startup fails if missing)
+- ✅ JSON syntax validation (ConvertFrom-Json will error)
+- ⚠️ **Gap:** No runtime schema validation (should check required fields)
+- ⚠️ **Gap:** No startup URL reachability test
 
 ---
 
-## 2. JSON Schema (config.schema.json)
-
-Complete JSON Schema for validation:
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "IPSC Kurs Watcher Configuration",
-  "type": "object",
-  "required": ["version", "monitors", "filters", "notifiers", "state", "logging"],
-  
-  "properties": {
-    "version": {
-      "type": "integer",
-      "description": "Config format version (1 = current)",
-      "minimum": 1,
-      "maximum": 1
-    },
-    
-    "monitors": {
-      "type": "array",
-      "description": "Array of website monitors to run",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": ["id", "url", "base_url", "enabled"],
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Unique monitor identifier",
-            "minLength": 1,
-            "maxLength": 50,
-            "pattern": "^[a-z0-9-]+$"
-          },
-          "url": {
-            "type": "string",
-            "description": "Category/listing page URL to monitor",
-            "minLength": 10,
-            "pattern": "^https?://"
-          },
-          "base_url": {
-            "type": "string",
-            "description": "Base URL for relative URL resolution",
-            "minLength": 10,
-            "pattern": "^https?://"
-          },
-          "enabled": {
-            "type": "boolean",
-            "description": "Enable/disable this monitor"
-          },
-          "timeout_seconds": {
-            "type": "integer",
-            "description": "HTTP request timeout in seconds",
-            "minimum": 5,
-            "maximum": 300,
-            "default": 30
-          },
-          "retry_attempts": {
-            "type": "integer",
-            "description": "Number of retries on failure",
-            "minimum": 1,
-            "maximum": 10,
-            "default": 3
-          },
-          "poll_interval_minutes": {
-            "type": "integer",
-            "description": "Polling interval in minutes (for reference)",
-            "minimum": 5,
-            "maximum": 1440,
-            "default": 30
-          }
-        }
-      }
-    },
-    
-    "filters": {
-      "type": "object",
-      "required": ["course_types", "exclude_patterns"],
-      "properties": {
-        "course_types": {
-          "type": "array",
-          "description": "Course type filters (matching patterns)",
-          "items": {
-            "type": "object",
-            "required": ["id", "name", "patterns", "enabled"],
-            "properties": {
-              "id": {
-                "type": "string",
-                "description": "Type identifier",
-                "minLength": 1,
-                "maxLength": 30
-              },
-              "name": {
-                "type": "string",
-                "description": "Display name",
-                "minLength": 1,
-                "maxLength": 50
-              },
-              "patterns": {
-                "type": "array",
-                "description": "String patterns to match (case-insensitive)",
-                "items": { "type": "string", "minLength": 1 },
-                "minItems": 1
-              },
-              "enabled": {
-                "type": "boolean",
-                "description": "Enable/disable this filter"
-              }
-            }
-          }
-        },
-        "exclude_patterns": {
-          "type": "array",
-          "description": "Courses to exclude (matched against name)",
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "min_availability": {
-          "type": "integer",
-          "description": "Minimum slots required to alert",
-          "minimum": 0,
-          "maximum": 1000,
-          "default": 1
-        }
-      }
-    },
-    
-    "notifiers": {
-      "type": "object",
-      "properties": {
-        "email": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "azure_tenant_id": { 
-              "type": "string",
-              "description": "Fallback (prefer env var IPSC_AZURE_TENANT_ID)"
-            },
-            "azure_client_id": {
-              "type": "string",
-              "description": "Fallback (prefer env var IPSC_AZURE_CLIENT_ID)"
-            },
-            "azure_user_id": {
-              "type": "string",
-              "description": "Fallback (prefer env var IPSC_AZURE_USER_ID)"
-            },
-            "sender": {
-              "type": "string",
-              "description": "Sender email address",
-              "format": "email"
-            },
-            "recipients": {
-              "type": "array",
-              "description": "Recipient email addresses",
-              "items": { "type": "string", "format": "email" },
-              "minItems": 1
-            }
-          }
-        },
-        "discord": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "webhook_urls": {
-              "type": "array",
-              "description": "Discord webhook URLs (prefer env var IPSC_DISCORD_WEBHOOKS)",
-              "items": { "type": "string", "pattern": "^https://discord.com/api/webhooks/" }
-            }
-          }
-        },
-        "windows_toast": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean" }
-          }
-        }
-      }
-    },
-    
-    "state": {
-      "type": "object",
-      "required": ["file_path"],
-      "properties": {
-        "file_path": {
-          "type": "string",
-          "description": "Path to state.json file",
-          "default": "data/state.json"
-        }
-      }
-    },
-    
-    "logging": {
-      "type": "object",
-      "properties": {
-        "level": {
-          "type": "string",
-          "enum": ["DEBUG", "INFO", "WARN", "ERROR"],
-          "default": "INFO",
-          "description": "Minimum log level"
-        },
-        "log_dir": {
-          "type": "string",
-          "description": "Directory for log files",
-          "default": "data/logs"
-        },
-        "retention_days": {
-          "type": "integer",
-          "description": "Keep logs for this many days",
-          "minimum": 1,
-          "maximum": 365,
-          "default": 30
-        }
-      }
-    },
-    
-    "error_handling": {
-      "type": "object",
-      "properties": {
-        "alert_on_repeated_errors": {
-          "type": "boolean",
-          "description": "Send admin alert if error threshold exceeded",
-          "default": false
-        },
-        "error_threshold": {
-          "type": "integer",
-          "description": "Number of errors to trigger alert",
-          "minimum": 1,
-          "maximum": 100,
-          "default": 5
-        },
-        "error_window_minutes": {
-          "type": "integer",
-          "description": "Time window for counting errors",
-          "minimum": 1,
-          "maximum": 1440,
-          "default": 60
-        }
-      }
-    }
-  }
-}
-```
-
----
-
-## 3. Example Configuration (config.example.json)
-
-Minimal working configuration:
+## Complete Configuration Schema
 
 ```json
 {
@@ -276,9 +36,10 @@ Minimal working configuration:
   "monitors": [
     {
       "id": "shooting-store",
+      "provider": "shooting-store",
+      "enabled": true,
       "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
       "base_url": "https://www.shooting-store.ch",
-      "enabled": true,
       "timeout_seconds": 30,
       "retry_attempts": 3,
       "poll_interval_minutes": 30
@@ -288,51 +49,62 @@ Minimal working configuration:
   "filters": {
     "course_types": [
       {
-        "id": "basic",
-        "name": "Basic Courses",
-        "patterns": ["Basic", "Level 1", "Einführung"],
+        "id": "tryout",
+        "name": "Tryout Courses",
+        "patterns": ["Tryout", "Einsteiger-Kurs"],
         "enabled": true
       },
       {
-        "id": "advanced",
-        "name": "Advanced Courses",
-        "patterns": ["Advanced", "Level 2+", "Fortgeschrittene"],
+        "id": "basic",
+        "name": "Basic Level",
+        "patterns": ["Basic", "Anfänger", "Level 1"],
+        "enabled": true
+      },
+      {
+        "id": "basic2",
+        "name": "Basic 2.0",
+        "patterns": ["Basic 2.0", "Basic 2.x", "Level 2"],
         "enabled": true
       }
     ],
-    "exclude_patterns": [
-      "Privatunterricht",
-      "Corporate",
-      "Seminar"
-    ],
+    "exclude_patterns": ["Privatunterricht", "VIP-Kurs", "Geschlossen"],
     "min_availability": 1
   },
   
   "notifiers": {
+    "windows_toast": {
+      "enabled": true,
+      "sound_enabled": true,
+      "group_by_type": true,
+      "max_courses_per_group": 5,
+      "auto_dismiss_seconds": 5,
+      "main_page_url": "https://www.shooting-store.ch/de/kategorie/kurse1"
+    },
     "email": {
       "enabled": true,
-      "sender": "your-email@example.com",
-      "recipients": [
-        "recipient1@example.com",
-        "recipient2@example.com"
-      ]
+      "provider": "graph",
+      "token_cache_path": "data/.token_cache.json",
+      "timeout_seconds": 30,
+      "retry_attempts": 3
     },
     "discord": {
-      "enabled": false
-    },
-    "windows_toast": {
-      "enabled": true
+      "enabled": true,
+      "retry_attempts": 3,
+      "timeout_seconds": 30,
+      "webhook_urls": []
     }
   },
   
   "state": {
-    "file_path": "data/state.json"
+    "file_path": "data/state.json",
+    "retention_days": 30
   },
   
   "logging": {
-    "level": "INFO",
     "log_dir": "data/logs",
-    "retention_days": 30
+    "log_level": "INFO",
+    "retention_days": 30,
+    "format": "json"
   },
   
   "error_handling": {
@@ -345,339 +117,378 @@ Minimal working configuration:
 
 ---
 
-## 4. Configuration Sections Explained
+## Configuration Sections
 
-### 4.1 Monitors Section
+### 1. version (Required)
 
-Defines which websites to monitor.
+```json
+"version": 1
+```
+
+| Key | Type | Required | Description |
+|-----|------|----------|-------------|
+| `version` | Integer | ✅ Yes | Config format version (1 = current, not plans for future) |
+
+---
+
+### 2. monitors[] (Required)
+
+Array of websites to monitor. Each monitor runs sequentially.
 
 ```json
 "monitors": [
   {
-    "id": "shooting-store",                                    // Unique ID
-    "url": "https://www.shooting-store.ch/de/kategorie/kurse1",  // Category page
-    "base_url": "https://www.shooting-store.ch",               // Base for relative URLs
-    "enabled": true,                                           // Enable/disable
-    "timeout_seconds": 30,                                     // HTTP timeout
-    "retry_attempts": 3,                                       // Retry count
-    "poll_interval_minutes": 30                                // How often (reference only)
+    "id": "shooting-store",
+    "provider": "shooting-store",
+    "enabled": true,
+    "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
+    "base_url": "https://www.shooting-store.ch",
+    "timeout_seconds": 30,
+    "retry_attempts": 3,
+    "poll_interval_minutes": 30
   }
 ]
 ```
 
-**Rules:**
-- At least 1 monitor required
-- `id` must be unique, lowercase, alphanumeric + hyphens
-- `url` and `base_url` must start with `http://` or `https://`
-- All monitors run in parallel (not sequentially)
+| Key | Type | Required | Default | Description |
+|-----|------|----------|---------|-------------|
+| `id` | String | ✅ Yes | N/A | Unique identifier (used for logging, routing) |
+| `provider` | String | ✅ Yes | N/A | Provider type: `"shooting-store"` (only option in v1.0) |
+| `enabled` | Boolean | ✅ Yes | N/A | Enable/disable this monitor |
+| `url` | String | ✅ Yes | N/A | Course listing URL (must be HTTPS, validated) |
+| `base_url` | String | ✅ Yes | N/A | Base URL for constructing detail page links |
+| `timeout_seconds` | Integer | ⚠️ No | 30 | HTTP request timeout in seconds (range: 5-300) |
+| `retry_attempts` | Integer | ⚠️ No | 3 | Number of retry attempts on network error (range: 1-10) |
+| `poll_interval_minutes` | Integer | ⚠️ No | 30 | Polling interval (informational only, not used in v1.0) |
 
-**Adding New Monitor:**
+**URL Validation:**
+- Must start with `https://` (http:// allowed only for local/testing)
+- Must be absolute path (no relative URLs)
+- No query parameters in base_url
+- No username/password in URLs
+
+**Adding New Monitors:**
 1. Add entry to `monitors[]` array
-2. Set `id` to unique identifier
-3. Set `url` to category/listing page
-4. Monitor must be implemented in `src/monitors/`
+2. Create new provider type in `src/monitors/`
+3. Update `MonitorFactory.ps1` routing
+4. No other code changes needed (extensible architecture)
 
-### 4.2 Filters Section
+---
 
-Defines which courses to alert on.
+### 3. filters{} (Required)
+
+Global filtering rules applied to all monitors.
 
 ```json
 "filters": {
   "course_types": [
     {
-      "id": "basic",                            // Unique type ID
-      "name": "Basic Courses",                  // Display name
-      "patterns": ["Basic", "Level 1"],         // Match patterns (case-insensitive)
-      "enabled": true                           // Enable/disable this type
-    }
-  ],
-  "exclude_patterns": [                         // Patterns to EXCLUDE
-    "Privatunterricht",
-    "Corporate"
-  ],
-  "min_availability": 1                         // Alert only if slots >= this
-}
-```
-
-**Rules:**
-- Course name matched against patterns (case-insensitive substring match)
-- Pattern "Basic" matches: "IPSC Basic 2.0", "basic_course", "THE BASIC ONE"
-- Exclude patterns checked AFTER type matching
-- Multiple types can match same course (all alerted)
-
-**Example:**
-```
-Course: "IPSC Basic 2.0 Level 1"
-├─ Matches type "basic" (pattern "Basic")
-├─ Not excluded (not "Privatunterricht")
-├─ Has 3 slots >= min 1
-└─ ALERT SENT
-```
-
-### 4.3 Notifiers Section
-
-Defines notification channels.
-
-**Email (via OAuth2):**
-```json
-"email": {
-  "enabled": true,
-  "sender": "your-email@example.com",
-  "recipients": ["user1@example.com", "user2@example.com"]
-}
-```
-
-**Setup Requirements:**
-1. Set environment variables (see [API_REFERENCES.md](API_REFERENCES.md))
-   - `IPSC_AZURE_TENANT_ID`
-   - `IPSC_AZURE_CLIENT_ID`
-   - `IPSC_AZURE_USER_ID`
-2. Run `.\scripts\Setup-AzureCredentials.ps1` (interactive setup)
-3. Sender must be your Azure AD mailbox
-4. Recipients can be any email addresses
-
-**Discord (via Webhooks):**
-```json
-"discord": {
-  "enabled": false
-}
-```
-
-**Setup Requirements:**
-1. Set environment variable:
-   - `IPSC_DISCORD_WEBHOOKS` (comma-separated webhook URLs)
-2. Create webhook in Discord server (Server Settings → Integrations → Webhooks)
-3. Copy webhook URL to environment variable
-4. Test: Run one monitoring cycle and check Discord channel
-
-**Windows Toast:**
-```json
-"windows_toast": {
-  "enabled": true
-}
-```
-
-**No setup required:** Uses Windows notification center (local, no internet).
-
-### 4.4 State Section
-
-Where to store persistent state.
-
-```json
-"state": {
-  "file_path": "data/state.json"
-}
-```
-
-**Rules:**
-- File is created automatically if missing
-- Should be in `data/` directory
-- Use relative path (relative to working directory)
-- Auto-backed up if corrupted
-
-### 4.5 Logging Section
-
-Log file configuration.
-
-```json
-"logging": {
-  "level": "INFO",              // MIN level: DEBUG, INFO, WARN, ERROR
-  "log_dir": "data/logs",       // Directory for log files
-  "retention_days": 30          // Delete logs older than this
-}
-```
-
-**Log Levels:**
-- **DEBUG:** Development/tracing (verbose)
-- **INFO:** Normal operations (default)
-- **WARN:** Concerning but not critical
-- **ERROR:** Failures requiring attention
-
-**Default:** INFO (logs normal operations + warnings + errors, not DEBUG)
-
-**File Pattern:** `watcher-2026-07-03.log` (daily rotation)
-
-### 4.6 Error Handling Section
-
-Alert configuration for repeated errors.
-
-```json
-"error_handling": {
-  "alert_on_repeated_errors": true,   // Send admin alert
-  "error_threshold": 5,               // After 5 errors
-  "error_window_minutes": 60          // In 60 minutes
-}
-```
-
-**Usage:**
-- If 5+ errors occur within 60 minutes
-- Send admin alert via email + Discord
-- Max 1 alert per 60 minutes per monitor (prevent spam)
-- Disabled by default (set to false to disable)
-
----
-
-## 5. Secrets Management
-
-### DO NOT PUT IN config.json:
-- ❌ Azure AD credentials
-- ❌ Discord webhook URLs
-- ❌ OAuth2 tokens
-- ❌ Email passwords
-- ❌ Any sensitive data
-
-### WHERE TO PUT SECRETS:
-
-**Environment Variables:**
-```powershell
-# Set once at machine setup
-setx IPSC_AZURE_TENANT_ID "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-setx IPSC_AZURE_CLIENT_ID "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
-setx IPSC_DISCORD_WEBHOOKS "https://discord.com/api/webhooks/123/abc"
-
-# Or use interactive setup
-.\scripts\Setup-AzureCredentials.ps1
-```
-
-**Token Cache (Auto-encrypted):**
-- `data/.token_cache.json` (DPAPI encrypted, binary format)
-- Generated automatically on first OAuth2 token request
-- Never commit to version control
-
----
-
-## 6. Configuration Validation Checklist
-
-Before deploying to production:
-
-- [ ] **Monitors**
-  - [ ] At least 1 monitor configured and enabled
-  - [ ] All URLs start with http:// or https://
-  - [ ] Base URL matches website domain
-
-- [ ] **Filters**
-  - [ ] At least 1 course type configured
-  - [ ] Patterns are meaningful (match expected course names)
-  - [ ] Exclude patterns correct (courses you want to skip)
-  - [ ] min_availability >= 1
-
-- [ ] **Notifiers**
-  - [ ] Email enabled: sender + recipients set, env vars configured
-  - [ ] Discord enabled: webhook URL set in env var
-  - [ ] At least 1 notifier enabled (email or discord or toast)
-
-- [ ] **Secrets**
-  - [ ] No credentials in config.json
-  - [ ] Environment variables set (IPSC_AZURE_*, IPSC_DISCORD_*)
-  - [ ] Sender email is valid Azure mailbox
-  - [ ] Recipients are valid email addresses
-
-- [ ] **Logging**
-  - [ ] Log directory writable (data/logs/)
-  - [ ] Retention days is reasonable (1-365)
-
-- [ ] **Testing**
-  - [ ] Run: `.\BasicCourseWatcher.ps1 -RunOnce`
-  - [ ] Check logs: `data/logs/watcher-YYYY-MM-DD.log`
-  - [ ] Verify notifications sent (email + discord)
-
----
-
-## 7. Troubleshooting Configuration Issues
-
-### "Config validation failed"
-**Cause:** Schema violation (missing field, wrong type, invalid value)  
-**Fix:** Check error message, compare against schema examples
-
-### "Invalid monitor URL"
-**Cause:** URL doesn't start with http:// or https://  
-**Fix:** Add protocol: `https://www.example.com/path`
-
-### "Email not sent"
-**Cause:** Credentials not configured  
-**Fix:** Set environment variables: `IPSC_AZURE_TENANT_ID`, `IPSC_AZURE_CLIENT_ID`, `IPSC_AZURE_USER_ID`
-
-### "Discord webhook failed"
-**Cause:** Webhook URL invalid or expired  
-**Fix:** Create new webhook in Discord, update env var `IPSC_DISCORD_WEBHOOKS`
-
-### "No courses found"
-**Cause:** Filters too strict OR website HTML changed  
-**Fix:** Check log file, adjust filters, update HTML parsing if needed
-
----
-
-## 8. Configuration Examples by Use Case
-
-### Minimal Setup (Email Only)
-```json
-{
-  "version": 1,
-  "monitors": [
-    {
-      "id": "shooting-store",
-      "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
-      "base_url": "https://www.shooting-store.ch",
+      "id": "basic",
+      "name": "Basic Level",
+      "patterns": ["Basic", "Anfänger"],
       "enabled": true
     }
   ],
-  "filters": {
-    "course_types": [
-      {"id": "all", "name": "All", "patterns": [""], "enabled": true}
-    ],
-    "exclude_patterns": []
-  },
-  "notifiers": {
-    "email": {"enabled": true, "sender": "you@example.com", "recipients": ["you@example.com"]},
-    "discord": {"enabled": false},
-    "windows_toast": {"enabled": false}
-  },
-  "state": {"file_path": "data/state.json"},
-  "logging": {"level": "INFO", "log_dir": "data/logs", "retention_days": 30},
-  "error_handling": {"alert_on_repeated_errors": false}
+  "exclude_patterns": ["Privatunterricht", "VIP-Kurs"],
+  "min_availability": 1
 }
 ```
 
-### Full Setup (Email + Discord + Toast)
+#### 3a. course_types[]
+
+| Key | Type | Required | Description |
+|-----|------|----------|-------------|
+| `id` | String | ✅ Yes | Unique filter ID (used for logging) |
+| `name` | String | ✅ Yes | Human-readable name |
+| `patterns` | Array[String] | ✅ Yes | Array of patterns to match (substring match, case-insensitive) |
+| `enabled` | Boolean | ⚠️ No | Default: `true`. Enable/disable this filter type |
+
+**Pattern Matching:**
+- Substring match (not regex in v1.0)
+- Case-insensitive
+- Example: Pattern `"Basic"` matches `"IPSC Basic 2.0"`, `"Basic Course"`
+- Empty patterns array = match all courses
+
+**Use Case:**
+- Alert only on "Basic" level courses
+- Alert only on "Tryout" courses
+- Separate filtering per course type
+
+#### 3b. exclude_patterns[]
+
+```json
+"exclude_patterns": ["Privatunterricht", "VIP-Kurs", "Geschlossen"]
+```
+
+| Key | Type | Required | Description |
+|-----|------|----------|-------------|
+| `exclude_patterns` | Array[String] | ⚠️ No | Patterns to exclude (blacklist) |
+
+**Behavior:**
+- Any course matching ANY pattern is excluded
+- Applied after type filtering
+- Substring match, case-insensitive
+
+#### 3c. min_availability
+
+```json
+"min_availability": 1
+```
+
+| Key | Type | Required | Default | Description |
+|-----|------|----------|---------|-------------|
+| `min_availability` | Integer | ⚠️ No | 1 | Minimum available slots to alert (range: 0+) |
+
+**Examples:**
+- `1` = Alert only if >= 1 slot available (default, most courses)
+- `0` = Alert even if sold out (unusual)
+- `5` = Alert only if >= 5 slots available (strict filter)
+
+---
+
+### 4. notifiers{} (Required)
+
+Notification channel configurations. All channels are optional (can disable all).
+
+#### 4a. windows_toast
+
+```json
+"windows_toast": {
+  "enabled": true,
+  "sound_enabled": true,
+  "group_by_type": true,
+  "max_courses_per_group": 5,
+  "auto_dismiss_seconds": 5,
+  "main_page_url": "https://www.shooting-store.ch/de/kategorie/kurse1"
+}
+```
+
+| Key | Type | Required | Default | Description |
+|-----|------|----------|---------|-------------|
+| `enabled` | Boolean | ✅ Yes | N/A | Enable/disable Toast notifications |
+| `sound_enabled` | Boolean | ⚠️ No | `true` | Play sound on notification |
+| `group_by_type` | Boolean | ⚠️ No | `true` | Group alerts by course type in toast |
+| `max_courses_per_group` | Integer | ⚠️ No | 5 | Max courses per notification (range: 1-20) |
+| `auto_dismiss_seconds` | Integer | ⚠️ No | 5 | Auto-dismiss timeout in seconds (range: 3-30, 0=manual) |
+| `main_page_url` | String | ⚠️ No | None | URL to open when toast is clicked |
+
+**Platform Requirements:**
+- Windows 10+ (Toast API via WinRT)
+- Graceful failure on older Windows (notification skipped, logged)
+
+#### 4b. email
+
+```json
+"email": {
+  "enabled": true,
+  "provider": "graph",
+  "token_cache_path": "data/.token_cache.json",
+  "timeout_seconds": 30,
+  "retry_attempts": 3
+}
+```
+
+| Key | Type | Required | Default | Description |
+|-----|------|----------|---------|-------------|
+| `enabled` | Boolean | ✅ Yes | N/A | Enable/disable email notifications |
+| `provider` | String | ✅ Yes | N/A | Email provider: `"graph"` (only option in v1.0, OAuth2 via Graph API) |
+| `token_cache_path` | String | ⚠️ No | `data/.token_cache.json` | Path to DPAPI-encrypted token cache |
+| `timeout_seconds` | Integer | ⚠️ No | 30 | Graph API request timeout (range: 5-60) |
+| `retry_attempts` | Integer | ⚠️ No | 3 | Retry attempts on network error (range: 1-10) |
+
+**Requirements:**
+- Environment variables set: `IPSC_AZURE_TENANT_ID`, `IPSC_AZURE_CLIENT_ID`, `IPSC_AZURE_USER_ID`
+- See: [SECURITY.md](SECURITY.md) for credential setup
+
+#### 4c. discord
+
+```json
+"discord": {
+  "enabled": true,
+  "retry_attempts": 3,
+  "timeout_seconds": 30,
+  "webhook_urls": []
+}
+```
+
+| Key | Type | Required | Default | Description |
+|-----|------|----------|---------|-------------|
+| `enabled` | Boolean | ✅ Yes | N/A | Enable/disable Discord notifications |
+| `retry_attempts` | Integer | ⚠️ No | 3 | Retry attempts on webhook fail (range: 1-10) |
+| `timeout_seconds` | Integer | ⚠️ No | 30 | Webhook request timeout (range: 5-60) |
+| `webhook_urls` | Array[String] | ⚠️ No | `[]` | Discord webhook URLs (deprecated, use env var) |
+
+**Recommended:** Use environment variable `IPSC_DISCORD_WEBHOOKS` instead of config.json (safer for secrets)
+
+---
+
+### 5. state{} (Required)
+
+State file management (course deduplication).
+
+```json
+"state": {
+  "file_path": "data/state.json",
+  "retention_days": 30
+}
+```
+
+| Key | Type | Required | Default | Description |
+|-----|------|----------|---------|-------------|
+| `file_path` | String | ✅ Yes | N/A | Path to state.json (relative or absolute) |
+| `retention_days` | Integer | ⚠️ No | 30 | Days to keep old states (unused in v1.0) |
+
+**state.json Structure:**
+```json
+{
+  "version": 1,
+  "last_poll": "2026-07-05T14:30:00Z",
+  "last_notified": [
+    { "id": "...", "name": "...", "availability": 3, "notified_at": "..." }
+  ]
+}
+```
+
+---
+
+### 6. logging{} (Required)
+
+Logging configuration.
+
+```json
+"logging": {
+  "log_dir": "data/logs",
+  "log_level": "INFO",
+  "retention_days": 30,
+  "format": "json"
+}
+```
+
+| Key | Type | Required | Default | Description |
+|-----|------|----------|---------|-------------|
+| `log_dir` | String | ✅ Yes | N/A | Directory for log files |
+| `log_level` | String | ✅ Yes | N/A | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` |
+| `retention_days` | Integer | ✅ Yes | N/A | Auto-delete logs older than N days (range: 1-365) |
+| `format` | String | ✅ Yes | N/A | Format: `"json"` (only option in v1.0) |
+
+**Log Files:**
+- Location: `{log_dir}/watcher-YYYY-MM-DD.log`
+- One file per day
+- Auto-rotation at midnight
+- Auto-cleanup after `retention_days`
+
+---
+
+### 7. error_handling{} (Required)
+
+Error alerting configuration (optional in practice).
+
+```json
+"error_handling": {
+  "alert_on_repeated_errors": false,
+  "error_threshold": 5,
+  "error_window_minutes": 60
+}
+```
+
+| Key | Type | Required | Default | Description |
+|-----|------|----------|---------|-------------|
+| `alert_on_repeated_errors` | Boolean | ⚠️ No | `false` | Enable error escalation alerts |
+| `error_threshold` | Integer | ⚠️ No | 5 | Errors before escalation (range: 1-20) |
+| `error_window_minutes` | Integer | ⚠️ No | 60 | Time window for threshold (range: 5-1440) |
+
+**Behavior:**
+- If `alert_on_repeated_errors: true` and N errors occur within time window:
+  - Send admin alert via email + Discord
+  - Max 1 alert per 60 min (prevent spam)
+- If `false`: Errors logged but not escalated (current behavior)
+
+---
+
+## Configuration Examples
+
+### Example 1: Minimal (Single Monitor, Toast Only)
+
 ```json
 {
   "version": 1,
   "monitors": [
     {
       "id": "shooting-store",
-      "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
-      "base_url": "https://www.shooting-store.ch",
+      "provider": "shooting-store",
       "enabled": true,
-      "timeout_seconds": 30,
-      "retry_attempts": 3,
-      "poll_interval_minutes": 30
+      "url": "https://www.shooting-store.ch/de/kategorie/kurse1",
+      "base_url": "https://www.shooting-store.ch"
     }
   ],
   "filters": {
-    "course_types": [
-      {"id": "basic", "name": "Basic", "patterns": ["Basic", "Level 1"], "enabled": true},
-      {"id": "advanced", "name": "Advanced", "patterns": ["Advanced", "Level 2"], "enabled": true}
-    ],
-    "exclude_patterns": ["Privatunterricht", "Corporate"],
+    "course_types": [],
+    "exclude_patterns": [],
     "min_availability": 1
   },
   "notifiers": {
-    "email": {"enabled": true, "sender": "you@example.com", "recipients": ["you@example.com", "friend@example.com"]},
-    "discord": {"enabled": true},
-    "windows_toast": {"enabled": true}
+    "windows_toast": { "enabled": true },
+    "email": { "enabled": false },
+    "discord": { "enabled": false }
   },
-  "state": {"file_path": "data/state.json"},
-  "logging": {"level": "DEBUG", "log_dir": "data/logs", "retention_days": 30},
-  "error_handling": {"alert_on_repeated_errors": true, "error_threshold": 5, "error_window_minutes": 60}
+  "state": { "file_path": "data/state.json" },
+  "logging": { "log_dir": "data/logs", "log_level": "INFO", "retention_days": 30, "format": "json" },
+  "error_handling": { "alert_on_repeated_errors": false }
 }
 ```
+
+### Example 2: Full Setup (All Notifications + Filters)
+
+See: [config/config.json](../config/config.json) (active config with all options)
+
+---
+
+## Configuration Best Practices
+
+1. **Never put secrets in config.json**
+   - Use environment variables for: Azure credentials, Discord webhooks
+   - See: [SECURITY.md](SECURITY.md)
+
+2. **Use relative paths**
+   - `data/state.json` (relative to working directory)
+   - NOT `C:\Users\...\data\state.json` (hardcoded absolute)
+
+3. **Keep patterns simple**
+   - Use substring matching, not regex (not yet supported)
+   - Case-insensitive matching
+   - Example: `"Basic"` matches `"IPSC Basic 2.0"` and `"Basic Course"`
+
+4. **Set min_availability carefully**
+   - `1` = Alert on any available course (default, most use)
+   - `5` = Alert only if many slots available (strict, fewer alerts)
+
+5. **Test configuration before deployment**
+   - Manual run: `.\Scheduler.ps1 -RunOnce`
+   - Check logs for validation errors
+
+---
+
+## Configuration Validation & Troubleshooting
+
+**Config Not Loading?**
+- Check JSON syntax: `ConvertFrom-Json -Path config/config.json` (will error if invalid)
+- Check file exists: `Test-Path config/config.json`
+- Check file readable: File permissions (must be readable by SYSTEM if scheduled task)
+
+**Monitors Not Running?**
+- Check `monitors[].enabled: true`
+- Check `monitors[].provider: "shooting-store"` (correct value)
+- Check URL format: Must be https, must be absolute
+
+**Filters Not Working?**
+- Check patterns are strings, not objects
+- Check `course_types[].enabled: true`
+- Test pattern matching: Does `"Basic"` match your course names?
 
 ---
 
 ## References
 
-- [STRUCTURE.md](../STRUCTURE.md) – Configuration details section
-- [API_REFERENCES.md](API_REFERENCES.md) – External services
-- [SECURITY.md](SECURITY.md) – Credential storage
-- [config/config.example.json](../../config/config.example.json) – Sample file
-- [config/config.schema.json](../../config/config.schema.json) – JSON Schema
+- [ARCHITECTURE.md](ARCHITECTURE.md) – System design (configuration section)
+- [SECURITY.md](SECURITY.md) – Credential management
+- [OPERATIONAL_GUIDE.md](OPERATIONAL_GUIDE.md) – Configuration management at runtime
