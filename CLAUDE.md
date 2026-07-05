@@ -318,18 +318,29 @@ MAJOR.MINOR.PATCH
 - **Notifications (v0.1+):** Email (SMTP), Discord (Webhooks), Windows Toast
 
 ### Deployment-Prozess
-- **v0.0.2 (Current MVP):** Manual runs via PowerShell scripts
-  - `.\BasicCourseWatcher.ps1 -RunOnce` (test)
-  - `.\BasicCourseWatcher.ps1` (continuous)
+- **v1.0.0 (Current - Stable):** Multi-channel distribution
   
-- **v0.1+ (Planned):**
-  - Windows Scheduled Task (auto-run every 30 minutes)
-  - `.\scripts\Install-ScheduledTask.ps1` (setup)
-  - Logs: `data/logs/watcher-YYYY-MM-DD.log` (daily rotation)
+  **Installation Methods:**
+  1. **PowerShell Gallery (Recommended)**
+     - `Install-Module -Name IPSCKursWatcher` (single command)
+     - Module auto-imported, `Invoke-MonitoringCycle` available globally
+     - Location: `$env:ProgramFiles\WindowsPowerShell\Modules\IPSCKursWatcher\`
   
-- **Production Release:**
-  - Via PowerShell Gallery (future, not v0.0.2)
-  - GitHub Releases (manual download)
+  2. **Git Clone (Development)**
+     - `git clone https://github.com/ZulshiBLN/IPSC-Kurs-Watcher.git`
+     - Run: `.\Scheduler.ps1 -RunOnce` or direct script execution
+     - Logs: `data/logs/watcher-YYYY-MM-DD.log` (daily rotation)
+  
+  **Deployment to Production:**
+  - Windows Scheduled Task setup: `.\scripts\Set-ScheduledTask.ps1`
+  - Runs every 30 minutes (configurable)
+  - Both installation methods support Scheduled Task integration
+  
+  **Release Process (GitHub Actions):**
+  - Tag format: `v1.x.x` (stable) or `v1.x.x-beta.N` (pre-release)
+  - GitHub release automatically created with ZIP archive
+  - PSGallery publishing only for stable releases (v1.x.x)
+  - Pre-releases available on GitHub only
 
 ### Security & Credentials
 

@@ -8,14 +8,33 @@
 
 ## Quick Reference
 
+### Installation-Specific Commands
+
+**If installed via PowerShell Gallery:**
+
+| Scenario | Command | Time to Resolve |
+|----------|---------|-----------------|
+| **Test manual run** | `Invoke-MonitoringCycle` | <1 min |
+| **View recent logs** | `Get-Content "$env:APPDATA\IPSC-Kurs-Watcher\logs\watcher-*.log" -Tail 50` | <1 min |
+| **Check config** | `Get-Content "$env:APPDATA\IPSC-Kurs-Watcher\config.json"` | <1 min |
+| **Check monitoring status** | `Get-ScheduledTask -TaskName "IPSC-Kurs-Watcher"` | <1 min |
+
+**If installed via Git Clone:**
+
 | Scenario | Command | Time to Resolve |
 |----------|---------|-----------------|
 | **Test manual run** | `.\Scheduler.ps1 -RunOnce` | <1 min |
 | **View recent logs** | `Get-Content data/logs/watcher-*.log -Tail 50` | <1 min |
-| **View all alerts** | `Get-Content data/logs/watcher-*.log \| Select-String "alert_reason"` | <1 min |
+| **Check config** | `Get-Content config/config.json` | <1 min |
 | **Check monitoring status** | `Get-ScheduledTask -TaskName "IPSC-Kurs-Watcher"` | <1 min |
-| **Reset course tracking** | `Remove-Item data/state.json` | <1 min |
-| **Clear token cache** | `Remove-Item data/.token_cache.json` (will refresh on next run) | <1 min |
+
+**Common to Both:**
+
+| Scenario | Command | Time to Resolve |
+|----------|---------|-----------------|
+| **View all alerts** | See logs for `alert_reason` entries | <1 min |
+| **Reset course tracking** | Delete state.json (see below) | <1 min |
+| **Clear token cache** | Will refresh on next run automatically | <1 min |
 | **Troubleshoot monitoring** | See [Troubleshooting](#troubleshooting) section | 5-15 min |
 | **Full health check** | See [Health Check](#health-check) section | 5-10 min |
 
@@ -63,6 +82,15 @@
 - If state file is corrupted
 
 **How to Reset:**
+
+If installed via **PowerShell Gallery:**
+```powershell
+Remove-Item "$env:APPDATA\IPSC-Kurs-Watcher\state.json"
+Invoke-MonitoringCycle
+# All courses will appear as NEW in next cycle
+```
+
+If installed via **Git Clone:**
 ```powershell
 Remove-Item data/state.json
 .\Scheduler.ps1 -RunOnce

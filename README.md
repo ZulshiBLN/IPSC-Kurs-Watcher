@@ -69,9 +69,21 @@ IPSC Kurs Watcher is a local Windows automation tool that:
 
 ---
 
-## Quick Start (5 Minutes)
+## Installation
 
-### 1. Clone Repository
+### Option 1: PowerShell Gallery (Recommended)
+
+**Fastest & Easiest – Single Command**
+
+```powershell
+Install-Module -Name IPSCKursWatcher -Repository PSGallery
+```
+
+This installs the module to your PowerShell modules directory and makes `Invoke-MonitoringCycle` available globally.
+
+### Option 2: Manual Installation (Git Clone)
+
+**For development or custom configuration**
 
 ```powershell
 cd C:\Scripts
@@ -79,7 +91,11 @@ git clone https://github.com/ZulshiBLN/IPSC-Kurs-Watcher.git
 cd IPSC-Kurs-Watcher
 ```
 
-### 2. Setup Credentials
+---
+
+## Quick Start (5 Minutes)
+
+### Setup Credentials
 
 ```powershell
 # Interactive setup
@@ -92,19 +108,27 @@ setx IPSC_AZURE_USER_ID "your-user-id"
 setx IPSC_DISCORD_WEBHOOKS "https://discord.com/api/webhooks/..."
 ```
 
-### 3. Test Manually
+### Test Manually
 
+**If installed via PowerShell Gallery:**
+```powershell
+# Test single run
+Invoke-MonitoringCycle
+
+# Check logs
+Get-Content $env:APPDATA\IPSC-Kurs-Watcher\logs\watcher-*.log -Tail 50
+```
+
+**If installed via Git Clone:**
 ```powershell
 # Test single run
 .\Scheduler.ps1 -RunOnce
 
 # Check logs
 Get-Content data/logs/watcher-*.log -Tail 50
-
-# Verify notifications received (Toast, Email, Discord)
 ```
 
-### 4. Deploy to Production (Optional)
+### Deploy to Production (Optional)
 
 ```powershell
 # Install Scheduled Task (runs every 30 minutes)

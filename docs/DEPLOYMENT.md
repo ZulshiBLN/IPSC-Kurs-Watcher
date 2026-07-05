@@ -62,6 +62,52 @@ Before deploying to production, complete these checks:
 
 ---
 
+## Installation Methods
+
+### Method 1: PowerShell Gallery (Recommended)
+
+**Best for:** Production deployments, users who don't need source code access
+
+```powershell
+# Install from PowerShell Gallery
+Install-Module -Name IPSCKursWatcher -Repository PSGallery
+
+# Verify installation
+Get-Module IPSCKursWatcher -ListAvailable
+
+# Run once to test
+Invoke-MonitoringCycle
+```
+
+**Advantages:**
+- ✅ Single command installation
+- ✅ Automatic updates via PowerShell
+- ✅ Module isolated in PowerShell modules directory
+- ✅ Global access via `Invoke-MonitoringCycle`
+
+**Location:** Module installs to `$env:ProgramFiles\WindowsPowerShell\Modules\IPSCKursWatcher\`
+
+### Method 2: Git Clone (Development/Custom)
+
+**Best for:** Development, custom modifications, troubleshooting
+
+```powershell
+cd C:\Scripts
+git clone https://github.com/ZulshiBLN/IPSC-Kurs-Watcher.git
+cd IPSC-Kurs-Watcher
+
+# Test immediately
+.\Scheduler.ps1 -RunOnce
+```
+
+**Advantages:**
+- ✅ Full source code access
+- ✅ Easy to modify and debug
+- ✅ Local logs visible in `/data/logs`
+- ✅ Can run from any directory
+
+---
+
 ## Step-by-Step Deployment (Development/Testing)
 
 ### 1. Clone Repository
