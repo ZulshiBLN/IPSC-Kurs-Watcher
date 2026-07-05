@@ -83,7 +83,7 @@ try {
         Write-Host "3. Push tag: git push origin v<version>"
         exit 0
     } else {
-        Write-Host "✓ Version $moduleVersion is new (not yet on PSGallery)"
+        Write-Host "[OK] Version $moduleVersion is new (not yet on PSGallery)"
     }
 } catch {
     Write-Warning "Unable to check existing versions (may be network issue): $_"
@@ -104,16 +104,16 @@ try {
     # Copy manifest
     $destManifest = Join-Path $moduleDir "$moduleName.psd1"
     Copy-Item $manifestPath -Destination $destManifest -Force
-    Write-Host "✓ Copied manifest to $destManifest"
+    Write-Host "[OK] Copied manifest to $destManifest"
 
     # Copy PSM1 module
     $psmPath = Join-Path $ModulePath "$moduleName.psm1"
     if (Test-Path $psmPath) {
         $destPsm = Join-Path $moduleDir "$moduleName.psm1"
         Copy-Item $psmPath -Destination $destPsm -Force
-        Write-Host "✓ Copied PSM1 module to $destPsm"
+        Write-Host "[OK] Copied PSM1 module to $destPsm"
     } else {
-        Write-Host "⚠ PSM1 module not found at $psmPath"
+        Write-Host "[WARN] PSM1 module not found at $psmPath"
     }
 
     # Copy source files
@@ -121,9 +121,9 @@ try {
     if (Test-Path $srcPath) {
         $destSrc = Join-Path $moduleDir "src"
         Copy-Item $srcPath -Destination $destSrc -Recurse -Force
-        Write-Host "✓ Copied source files to $destSrc"
+        Write-Host "[OK] Copied source files to $destSrc"
     } else {
-        Write-Host "⚠ Source directory not found at $srcPath"
+        Write-Host "[WARN] Source directory not found at $srcPath"
     }
 
     # Copy documentation
@@ -131,16 +131,16 @@ try {
     if (Test-Path $docsPath) {
         $destDocs = Join-Path $moduleDir "docs"
         Copy-Item $docsPath -Destination $destDocs -Recurse -Force
-        Write-Host "✓ Copied documentation to $destDocs"
+        Write-Host "[OK] Copied documentation to $destDocs"
     } else {
-        Write-Host "⚠ Documentation directory not found at $docsPath"
+        Write-Host "[WARN] Documentation directory not found at $docsPath"
     }
 
     # Validate the staged module
     Write-Host ""
     Write-Host "Validating staged module manifest..."
     $stagedManifest = Test-ModuleManifest -Path $destManifest -ErrorAction Stop
-    Write-Host "✓ Staged manifest is valid"
+    Write-Host "[OK] Staged manifest is valid"
     Write-Host "  Module: $($stagedManifest.Name)"
     Write-Host "  Version: $($stagedManifest.Version)"
 
@@ -165,7 +165,7 @@ try {
 
     Write-Host ""
     Write-Host "=========================================="
-    Write-Host "✓ Successfully published to PowerShell Gallery!"
+    Write-Host "[OK] Successfully published to PowerShell Gallery!"
     Write-Host "=========================================="
     Write-Host ""
     Write-Host "Module available at:"
@@ -197,7 +197,7 @@ try {
     Write-Host "Cleaning up staging directory..."
     if (Test-Path $tempStaging) {
         Remove-Item $tempStaging -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host "✓ Staging directory cleaned up"
+        Write-Host "[OK] Staging directory cleaned up"
     }
 }
 

@@ -88,10 +88,21 @@ Automation und Monitoring für IPSC-Kurse mit intelligenter Benachrichtigung und
 - Beispiel [NO]: `# loop through array`
 - Beispiel [YES]: `// Retry with exponential backoff due to rate limiting`
 
-**Regel 3.1a - Keine problematischen Unicode-Zeichen in Output**
-- Verwende nur ASCII für User-Output (robuster für Encoding-Probleme)
-- Keine Unicode Symbole (°, ✓, ✗, •, █, ░, →, ←) in Logs/Messages
-- STATTDESSEN: [OK]/[ERROR]/[WARN]/[INFO], *, -, #, >, <, etc.
+**Regel 3.1a - ASCII-Only in PowerShell Scripts (mit Ausnahmen)**
+- **REGEL:** Verwende nur ASCII in PowerShell Scripts & Console-Output
+  - STATTDESSEN: `[OK]`, `[ERROR]`, `[WARN]`, `[INFO]`, `*`, `-`, `#`, `>`, `<`, etc.
+  - Grund: PowerShell Encoding-Probleme auf Systemen, in Logs, in CI/CD
+  
+- **AUSNAHMEN (Unicode erlaubt):**
+  - ✅ **Dokumentationen** (`.md` files) → können `✓`, `✗`, `→`, `°` etc. verwenden
+  - ✅ **Email HTML** → können Unicode & HTML-Entities verwenden (e.g., `&#10004;`, `&#10008;`)
+  - ✅ **Discord Messages** → JSON unterstützt Unicode nativ
+  - ✅ **Windows Toast Notifications** → moderne API mit vollständiger Unicode-Unterstützung
+  
+- **NICHT erlaubt:**
+  - ❌ PowerShell `Write-Host` / `Write-Error` / Console-Ausgabe
+  - ❌ Log-Dateien (JSON, TXT)
+  - ❌ Structured Output (CSV, Config)
 
 **Regel 3.2 - Keine Über-Abstraktionen**
 - YAGNI-Prinzip: Nicht für hypothetische Zukunft bauen
