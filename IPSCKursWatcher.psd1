@@ -1,5 +1,5 @@
 @{
-    RootModule           = 'Scheduler.ps1'
+    RootModule           = 'IPSCKursWatcher.psm1'
     ModuleVersion        = '1.0.0'
     GUID                 = '5c7e9a2f-b4d1-4e6c-8f3a-9d2e1c5b7f4a'
     Author               = 'ZulshiBLN'
