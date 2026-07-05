@@ -151,6 +151,7 @@ jobs:
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
         run: |
           Write-Host ""
           Write-Host "=========================================="
@@ -161,12 +162,38 @@ jobs:
           Write-Host "Is Pre-Release: ${{ steps.version.outputs.is_prerelease }}"
           Write-Host ""
 
+          # Register GitHub Packages repository
+          Write-Host "Registering GitHub Packages repository..."
+          try {
+            $repo = Get-PSRepository -Name "GitHubPackages" -ErrorAction SilentlyContinue
+            if ($null -eq $repo) {
+              $secureToken = ConvertTo-SecureString -String $env:GITHUB_TOKEN -AsPlainText -Force
+              $credential = New-Object System.Management.Automation.PSCredential($env:GITHUB_ACTOR, $secureToken)
+
+              Register-PSRepository `
+                -Name "GitHubPackages" `
+                -SourceLocation "https://nuget.pkg.github.com/ZulshiBLN/index.json" `
+                -PublishLocation "https://nuget.pkg.github.com/ZulshiBLN/index.json" `
+                -InstallationPolicy Trusted `
+                -Credential $credential `
+                -ErrorAction Stop
+
+              Write-Host "[OK] GitHub Packages repository registered"
+            } else {
+              Write-Host "[OK] GitHub Packages repository already registered"
+            }
+          } catch {
+            Write-Host "[WARN] Failed to register GitHub Packages repository: $_"
+            Write-Host "Continuing anyway..."
+          }
+
           # Create staging directory for GitHub Packages
           $tempDir = [System.IO.Path]::GetTempPath()
           $tempStaging = Join-Path $tempDir "GitHubPackages-IPSCKursWatcher-$(Get-Random)"
           $moduleDir = Join-Path $tempStaging "IPSCKursWatcher"
 
           try {
+            Write-Host ""
             Write-Host "Creating staging directory..."
             New-Item -ItemType Directory -Path $moduleDir -Force | Out-Null
 
@@ -193,7 +220,7 @@ jobs:
             # Publish to GitHub Packages
             Publish-Module -Path $moduleDir `
               -NuGetApiKey $env:GITHUB_TOKEN `
-              -Repository "https://nuget.pkg.github.com/ZulshiBLN/index.json" `
+              -Repository "GitHubPackages" `
               -Force `
               -ErrorAction Stop
 
@@ -207,7 +234,7 @@ jobs:
             Write-Host ""
             Write-Host "Installation:"
             Write-Host "  Register-PSRepository -Name GitHub ..."
-            Write-Host "  Install-Module -Name IPSCKursWatcher -Repository GitHub"
+            Write-Host "  Install-Module -Name IPSCKursWatcher -Repository GitHubPackages"
 
           } catch {
             Write-Host ""
