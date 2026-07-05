@@ -128,7 +128,7 @@ function Write-LogToFile-JSON {
     $logFile = Join-Path $logDir "watcher-$(Get-Date -Format 'yyyy-MM-dd').log"
 
     $logEntry = @{
-        timestamp = [datetime]::UtcNow.ToString('o')
+        timestamp = [datetime]::Now.ToString('o')
         level = $Level
         message = $Message
     }

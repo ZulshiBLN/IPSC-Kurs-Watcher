@@ -148,7 +148,7 @@ function _BuildDiscordEmbeds {
         # Build fields (one per course)
         $fields = @()
         foreach ($alert in $alerts) {
-            $value = "[$($alert.name) | $($alert.price)]($($alert.url))`n$($alert.date) | $($alert.time) | **$($alert.availability) Slots**"
+            $value = "[$($alert.name)]($($alert.url)) | $($alert.price)`n$($alert.date) | $($alert.time) | **$($alert.availability) Slots**"
 
             $fields += @{
                 name = " "
