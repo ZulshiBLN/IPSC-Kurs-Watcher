@@ -81,12 +81,6 @@ https://github.com/ZulshiBLN/IPSC-Kurs-Watcher
             # Project URI for gallery
             ProjectUri = 'https://github.com/ZulshiBLN/IPSC-Kurs-Watcher'
 
-            # License URI
-            LicenseUri = 'https://github.com/ZulshiBLN/IPSC-Kurs-Watcher/blob/main/LICENSE'
-
-            # Icon URI
-            IconUri = 'https://raw.githubusercontent.com/ZulshiBLN/IPSC-Kurs-Watcher/main/docs/icon.png'
-
             # Prerelease flag
             Prerelease = $false
 
