@@ -99,31 +99,50 @@ try {
     Write-Host ""
     Write-Host "Creating staging directory for publishing..."
     New-Item -ItemType Directory -Path $moduleDir -Force | Out-Null
+    Write-Host "Staging directory: $moduleDir"
 
     # Copy manifest
-    Copy-Item $manifestPath -Destination (Join-Path $moduleDir "$moduleName.psd1") -Force
-    Write-Host "✓ Copied manifest"
+    $destManifest = Join-Path $moduleDir "$moduleName.psd1"
+    Copy-Item $manifestPath -Destination $destManifest -Force
+    Write-Host "✓ Copied manifest to $destManifest"
 
     # Copy PSM1 module
     $psmPath = Join-Path $ModulePath "$moduleName.psm1"
     if (Test-Path $psmPath) {
-        Copy-Item $psmPath -Destination (Join-Path $moduleDir "$moduleName.psm1") -Force
-        Write-Host "✓ Copied PSM1 module"
+        $destPsm = Join-Path $moduleDir "$moduleName.psm1"
+        Copy-Item $psmPath -Destination $destPsm -Force
+        Write-Host "✓ Copied PSM1 module to $destPsm"
+    } else {
+        Write-Host "⚠ PSM1 module not found at $psmPath"
     }
 
     # Copy source files
     $srcPath = Join-Path $ModulePath "src"
     if (Test-Path $srcPath) {
-        Copy-Item $srcPath -Destination (Join-Path $moduleDir "src") -Recurse -Force
-        Write-Host "✓ Copied source files"
+        $destSrc = Join-Path $moduleDir "src"
+        Copy-Item $srcPath -Destination $destSrc -Recurse -Force
+        Write-Host "✓ Copied source files to $destSrc"
+    } else {
+        Write-Host "⚠ Source directory not found at $srcPath"
     }
 
     # Copy documentation
     $docsPath = Join-Path $ModulePath "docs"
     if (Test-Path $docsPath) {
-        Copy-Item $docsPath -Destination (Join-Path $moduleDir "docs") -Recurse -Force
-        Write-Host "✓ Copied documentation"
+        $destDocs = Join-Path $moduleDir "docs"
+        Copy-Item $docsPath -Destination $destDocs -Recurse -Force
+        Write-Host "✓ Copied documentation to $destDocs"
+    } else {
+        Write-Host "⚠ Documentation directory not found at $docsPath"
     }
+
+    # Validate the staged module
+    Write-Host ""
+    Write-Host "Validating staged module manifest..."
+    $stagedManifest = Test-ModuleManifest -Path $destManifest -ErrorAction Stop
+    Write-Host "✓ Staged manifest is valid"
+    Write-Host "  Module: $($stagedManifest.Name)"
+    Write-Host "  Version: $($stagedManifest.Version)"
 
     # Publish module to PSGallery
     Write-Host ""
@@ -132,13 +151,22 @@ try {
     Write-Host "Module path: $moduleDir"
     Write-Host ""
 
-    Publish-Module -Path $moduleDir `
-        -NuGetApiKey $NuGetApiKey `
-        -Repository $Repository `
-        -Force `
-        -ErrorAction Stop
+    # Use verbose output to capture more details
+    $publishParams = @{
+        Path = $moduleDir
+        NuGetApiKey = $NuGetApiKey
+        Repository = $Repository
+        Force = $true
+        ErrorAction = "Stop"
+        Verbose = $true
+    }
 
+    Publish-Module @publishParams
+
+    Write-Host ""
+    Write-Host "=========================================="
     Write-Host "✓ Successfully published to PowerShell Gallery!"
+    Write-Host "=========================================="
     Write-Host ""
     Write-Host "Module available at:"
     Write-Host "  https://www.powershellgallery.com/packages/$moduleName/$moduleVersion"
@@ -147,17 +175,29 @@ try {
     Write-Host "  Install-Module -Name $moduleName -RequiredVersion $moduleVersion"
 
 } catch {
-    Write-Error "Failed to publish module: $_"
+    Write-Host ""
+    Write-Host "=========================================="
+    Write-Host "ERROR: Failed to publish module"
+    Write-Host "=========================================="
+    Write-Host ""
+    Write-Error $_.Exception.Message
+    Write-Host ""
+    Write-Host "Full Error Details:"
+    Write-Host $_.Exception.ToString()
     Write-Host ""
     Write-Host "Troubleshooting:"
     Write-Host "1. Verify NuGetApiKey is correct (from https://www.powershellgallery.com/account/Edit)"
-    Write-Host "2. Verify module manifest is valid: Test-ModuleManifest -Path '$manifestPath'"
-    Write-Host "3. Check PSGallery status: https://www.powershellgallery.com/"
+    Write-Host "2. Verify staged manifest is valid: Test-ModuleManifest -Path '$destManifest'"
+    Write-Host "3. Check staging directory contents: ls -la '$moduleDir'"
+    Write-Host "4. Check PSGallery status: https://www.powershellgallery.com/"
     exit 1
 } finally {
     # Cleanup staging directory
+    Write-Host ""
+    Write-Host "Cleaning up staging directory..."
     if (Test-Path $tempStaging) {
         Remove-Item $tempStaging -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "✓ Staging directory cleaned up"
     }
 }
 
